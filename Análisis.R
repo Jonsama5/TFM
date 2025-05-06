@@ -4,12 +4,13 @@ library(ggplot2)
 library(readxl)
 library(dplyr)
 library(tibble)
-library(microbiome)
-library(phyloseq)
-library(patchwork)
-library(Rtsne)
-library(vegan)
-library(FSA)
+library(microbiome) #Microbiome package
+library(phyloseq) #Main microbiome package
+library(patchwork) #wrap plots
+library(Rtsne) #t-sne package
+library(vegan) #Microbiome package; used for PERMANOVA
+library(FSA) #dunn test
+library(gt) #Plot tibbles
 
 # ============================
 # PREPROCESAMIENTO
@@ -22,7 +23,7 @@ metadata[,1] <- sub("-.*", "", metadata[,1])
 
 #Hay que hacer arreglos porque hay un par de duplicados. Además, separo otu y taxa.
 
-  #Arreglo y separo en bacterias
+#Arreglo y separo en bacterias
 colnames(bacteria_csv) <- sub("\\..*", "", colnames(bacteria_csv))
 bacteria_csv <- subset(bacteria_csv, select = -AN0007)
 bacteria_csv <- subset(bacteria_csv, select = -AN0425.1)
@@ -30,14 +31,14 @@ bacteria_csv <- subset(bacteria_csv, select = -AN0425.1)
 bacteria_otu <- bacteria_csv[,1:221]
 bacteria_tax <- bacteria_csv[,222:length(bacteria_csv)]
 
-  #Arreglo y separo en virus
+#Arreglo y separo en virus
 colnames(virus_csv) <- sub("\\..*", "", colnames(virus_csv))
 virus_csv <- subset(virus_csv, select = -AN0007)
 virus_csv <- subset(virus_csv, select = -AN0425.1)
 
 virus_otu <- virus_csv[,1:221]
 virus_tax <- virus_csv[,222:length(virus_csv)]
-  #Voy a crear un dataset global
+#Voy a crear un dataset global
 global_csv <- rbind(bacteria_csv, virus_csv)
 global_otu <- global_csv[,1:221]
 global_tax <- global_csv[,222:length(global_csv)]
@@ -54,6 +55,19 @@ rownames(virus_otu) <- new_row_names_v
 rownames(virus_tax) <- new_row_names_v
 rownames(global_otu) <- new_row_names_global
 rownames(global_tax) <- new_row_names_global
+metadata <- metadata %>%
+  mutate(Zone = case_when(
+    Location %in% c("Doulougou", "Massila", "Daiguene", "Moussourtouk", "Makabay (Djarengo)", 
+                    "Moulva", "Laf", "Badjawa", "Lougol", "Mayo Lebride", "Lamoudan", "Lainde Mbana", "Mayo Boki") ~ "Norte",
+    Location %in% c("Tibati", "Palama", "Carrefour Poli", "Mgbandji", "Nkolondom", "Djaba", 
+                    "Balda Bouri", "Banda", "Teckel", "Mabarangal'L", "Beka Goto", "Tekel") ~ "Central",
+    Location %in% c("Bamendi", "Manda", "Mfelap", "Manchoutvi") ~ "Oeste",
+    Location %in% c("Oitibili", "Ahala", "Obala", "Essos") ~ "Suroeste",
+    Location %in% c("Gado Badzere", "Zembe Borongo", "Mayos", "Mbalmayo", "Lougol", "Mayo Dafan", 
+                    "Avebe", "Nlozok", "DombÃ©") ~ "Sureste",
+    Location %in% c("Afan-Essokye", "Foulassi I") ~ "Sur",
+    TRUE ~ NA_character_  # En caso de que no coincida con ninguna localidad, asigna NA
+  ))
 samples <- metadata
 samples <- samples %>% tibble::column_to_rownames("Sample.ID")
 
@@ -66,16 +80,16 @@ bacteria_taxa <- as.matrix(bacteria_tax)
 bacteria_TAX <- tax_table(bacteria_taxa)
 
 SAMPLES <- sample_data(samples)
-SAMPLES$SampleID <- rownames(SAMPLES)
+
 phy_b <- phyloseq(bacteria_OTU, bacteria_TAX, SAMPLES)
 
-  #Virus
+#Virus
 virus_OTU <- otu_table(virus_otu, taxa_are_rows = TRUE)
 virus_taxa <- as.matrix(virus_tax)
 virus_TAX <- tax_table(virus_taxa)
 
 phy_v <- phyloseq(virus_OTU, virus_TAX, SAMPLES)
-  #Global
+#Global
 global_OTU <- otu_table(global_otu, taxa_are_rows = TRUE)
 global_taxa <- as.matrix(global_tax)
 global_TAX <- tax_table(global_taxa)
@@ -88,76 +102,44 @@ phy_g <- phyloseq(global_OTU, global_TAX, SAMPLES)
 phy_g
 phy_b
 phy_v
-  #Lecturas
+#Lecturas
 sum(readcount(phy_g))
 sum(readcount(phy_b))
 sum(readcount(phy_v))
-  #Características
+#Características
 summarize_phyloseq(phy_g)
 summarize_phyloseq(phy_b)
 summarize_phyloseq(phy_v)
-  #Rarefacción
-#Tengo dos métodos:
-#Método A
+#Rarefacción
 total = median(sample_sums(phy_g))
 standf = function(x, t=total) round(t*(x/sum(x)))  
 phy_g_a <- phy_g
 phy_g_a = transform_sample_counts(phy_g, standf)
-#Método B
-total = median(sample_sums(phy_g))
+
+total = median(sample_sums(phy_b))
 standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_g_b <- phy_g
-phy_g_b = transform_sample_counts(phy_g, standf)
-#Estos dos hacen un escalado proporcional y no eliminan OTUs, el siguiente
-#si que los elimina
-phy_g_rarefied <- rarefy_even_depth(phy_g, sample.size = min(sample_sums(phy_g)), rngseed = 42)
-phy_g_rarefied
-summarize_phyloseq(phy_g_rarefied)
+phy_b_a <- phy_b
+phy_b_a = transform_sample_counts(phy_b, standf)
 
-#Probando graficos con rarefacciones A, B, C + quitando singletons
-  #Eliminar singletos
-phy_g_filtered <- prune_taxa(taxa_sums(phy_g) > 1, phy_g)
-phy_g_c_filtered <- prune_taxa(taxa_sums(phy_g_rarefied) > 1, phy_g_rarefied)
-phy_g_filtered <- prune_taxa(taxa_sums(phy_g) > 1, phy_g)
-
-A <- plot_bar(phy_g, fill = "Phylum", title = "Sin rarefaccion") +
-  theme(legend.position = "none") #Sin rarefaccion
-B <- plot_bar(phy_g_filtered, fill = "Phylum", title = "Sin rarefaccion + singletons") +
-  theme(legend.position = "none") #Sin rarefaccion + singletons
-C <- plot_bar(phy_g_a, fill = "Phylum", title = "Rarefaccion A") +
-  theme(legend.position = "none") #Rarefaccion A
-D <- plot_bar(phy_g_b, fill = "Phylum", title = "Rarefaccion B") +
-  theme(legend.position = "none") #Rarefaccion B
-E <- plot_bar(phy_g_rarefied, fill = "Phylum", title = "Rarefaccion C") +
-  theme(legend.position = "none") #Rarefaccion C
-G <- plot_bar(phy_g_c_filtered, fill = "Phylum", title = "Rarefaccion C + singletons") +
-  theme(legend.position = "none") #Rarefaccion C + singletons
-
-plot_list1 <- list(A, B, C)
-plot_list2 <- list(D, E, G)
-wrap_plots(plot_list1, ncol = 3)
-wrap_plots(plot_list2, ncol = 3)
-wrap_plots(list(D, E))
-
-  #Miro quitando el que tiene más reads (20k)
-readcount(phy_g)
-phy_g <- subset_samples(physeq = phy_g, sample_names(phy_g) != "AN0582")
-#Manualmente miro los singletons
-taxa_sums <- taxa_sums(phy_g)
-singletons <- taxa_sums[taxa_sums == 1]
-
-
-
-plot_composition(phy_g)
-plot_heatmap(phy_g)
-plot_landscape(phy_g, transformation = "compositional")
-plot_core(phy_g)
+total = median(sample_sums(phy_v))
+standf = function(x, t=total) round(t*(x/sum(x)))  
+phy_v_a <- phy_v
+phy_v_a = transform_sample_counts(phy_v, standf)
+#Número de muestras por punto de muestreo (para hacer el mapa, no voy a sobrecargarlo
+#con sitios que solo tienen 1, de cara a agruparlas por zonas)
+ggplot(SAMPLES, aes(x = Location)) +
+  geom_bar() +
+  labs(title = "Número de muestras por punto de muestreo",
+       x = "Punto de muestreo",
+       y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90))
 
 # ============================
 # ANÁLISIS EXPLORATORIO (ML)
 # ============================
 
-  #Creo un DF para usarlo en estos gráficos
+#Creo un DF para usarlo en estos gráficos
 t_df <- data.frame(t(global_otu))
 t_df$ID <- rownames(t(global_otu))
 colnames(t_df)[colnames(t_df) == "ID"] <- "SampleID"
@@ -165,12 +147,33 @@ colnames(metadata)[colnames(metadata) == "Sample.ID"] <- "SampleID"
 rownames(t_df) <- NULL
 df <- merge.data.frame(metadata, t_df, by = "SampleID")
 
+  #Creo una paleta de colores distinguible
+# Crear una función de gradiente
+gradiente_func <- colorRampPalette(c("red", "blue", "green", "purple", "orange", "black", "cyan", "pink"))
+# Generar 256 colores
+gradiente_colores <- gradiente_func(length(unique(df$Location)) * 20)  # 20 veces más colores
+# Escoger aleatoriamente
+paleta <-  c("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000",
+             "#000080", "#800080", "#008080", "#C0C0C0", "#808080", "#FFA500", "#FFFF99", "#FFD700", "#FF69B4",
+             "#87CEEB", "#FF6347", "#FF7F50", "#20B2AA", "#ADFF2F", "#7FFFD4", "#40E0D0", "#FF4500", "#DA70D6", "#FFDAB9",
+             "#DB7093", "#FFDEAD", "#00FA9A", "#B0E0E6", "#FFC0CB", "#E6E6FA", "#00FF7F", "#4682B4", "#F08080", "#DAA520",
+             "#FFA07A", "#228B22", "#FF8C00", "#FF69B4", "#BA55D3", "#7FFF00", "#6A5ACD", "#48D1CC", "#CD5C5C", "#F0E68C",
+             "#00CED1", "#20B2AA", "#9932CC", "#8B0000", "#4B0082", "#7CFC00", "#D2691E", "#BC8F8F", "#8A2BE2", "#FA8072",
+             "#2E8B57", "#FF1493", "#1E90FF", "#FFD700", "#B22222", "#FF6347", "#40E0D0", "#808000", "#FF8C00", "#FF69B4",
+             "#DB7093", "#20B2AA", "#00FF7F", "#7FFF00", "#4682B4", "#F08080", "#DAA520", "#FFA07A", "#9932CC", "#8B0000",
+             "#7CFC00", "#D2691E", "#BC8F8F", "#8A2BE2", "#FA8072", "#2E8B57", "#FF1493", "#1E90FF", "#B22222", "#FF6347",
+             "#000000", "#FFFFFF", "#00008B", "#008B8B", "#B8860B", "#A9A9A9", "#006400", "#8B008B", "#556B2F", "#FF8C00",
+             "#9932CC", "#8B0000", "#E9967A", "#8FBC8F", "#483D8B", "#2F4F4F", "#00CED1", "#9400D3", "#FF1493", "#00BFFF",
+             "#696969", "#1E90FF", "#B22222", "#FFFAF0", "#778795", "#FF00FF", "#DCDCDC", "#F8F8FF", "#FFD700", "#DAA520",
+             "#ADFF2F", "#FF69B4", "#CD5C5C", "#8B4513", "#F0E68C", "#20B2AA", "#6A5ACD","#9370DB", "#00FF7F", "#9ACD32", "#BDB76B",     "#778899", "#FF8C00", "#BA55D3", "#4169E1", "#F08080", "#20B2AA", "#FF4500", "#ADFF2F", "#8A2BE2", "#87CEEB", "#800000")
+
+################ PCA ################ 
 #PCA --> No utilizable, los CP explican muy poca variabilidad
 phy_pca <- transformSampleCounts(phy_g, function(x) x/sum(x)) #Proporciones relativas
 otu_mat_g <- as(otu_table(phy_pca), "matrix") #Pasamos a una matriz de abundancias (lo extraemos del objeto clase phyloseq)
 otu_mat_g <- t(otu_mat_g) #Las muestras deben ser filas
 pca_res_g <- prcomp(otu_mat_g, center = TRUE, scale. = TRUE)
-  #Para plotearlo:
+#Para plotearlo:
 pca_scores <- as.data.frame(pca_res_g$x) #Coordenadas
 sample_data_df <- as.data.frame(sample_data(phy_g)) #Extraigo metadatos y los guardo en un DF
 sample_data_df$SampleID <- rownames(sample_data_df) #Creo columna de muestra en metadatos para hacer un bind
@@ -181,20 +184,14 @@ ggplot(pca_plot_df, aes(x = PC1, y = PC2)) +
   labs(x = paste0("PC1 (", round(summary(pca_res_g)$importance[2,1]*100, 1), "%)"),
        y = paste0("PC2 (", round(summary(pca_res_g)$importance[2,2]*100, 1), "%)")) +
   theme_minimal()
-  #Voy a mirar los autovalores
+#Voy a mirar los autovalores
 library(stat)
 library(factoextra)
 head(get_eigenvalue(pca_res_g))
 
-
-get_pca_var(pca_res_g)
-fviz_pca_var(pca_res_g, col.var = "cos2", alpha.var = 0.5, gradient.cols = c("blue", "yellow", "red"),
-              labelsize = 1)
-
-
-### t-SNE ###
+################ t-SNE ################ 
 library(Rtsne)
-#PrimeroRtsne#Primero hay que fijar una semilla
+#Primero hay que fijar una semilla
 set.seed(1995)
 str(DF)
 #Preparamos set de datos
@@ -210,53 +207,6 @@ library(randomcoloR)
 palette_location <- distinctColorPalette(k = length(unique(df$Location)))
 palette_location <- as.vector(palette_location)
 class(palette_location)
-
-#Más colores
-# Crear una función de gradiente
-gradiente_func <- colorRampPalette(c("red", "blue", "green", "purple", "orange", "black", "cyan", "pink"))
-# Generar 256 colores
-gradiente_colores <- gradiente_func(length(unique(df$Location)) * 20)  # 20 veces más colores
-# Escoger aleatoriamente
-paleta <-  c("#FFFFBB", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000",
-                      "#000080", "#800080", "#008080", "#C0C0C0", "#808080", "#FFA500", "#FFFF99", "#FFD700", "#FF69B4",
-                      "#87CEEB", "#FF6347", "#FF7F50", "#20B2AA", "#ADFF2F", "#7FFFD4", "#40E0D0", "#FF4500", "#DA70D6", "#FFDAB9",
-                      "#DB7093", "#FFDEAD", "#00FA9A", "#B0E0E6", "#FFC0CB", "#E6E6FA", "#00FF7F", "#4682B4", "#F08080", "#DAA520",
-                      "#FFA07A", "#228B22", "#FF8C00", "#FF69B4", "#BA55D3", "#7FFF00", "#6A5ACD", "#48D1CC", "#CD5C5C", "#F0E68C",
-                      "#00CED1", "#20B2AA", "#9932CC", "#8B0000", "#4B0082", "#7CFC00", "#D2691E", "#BC8F8F", "#8A2BE2", "#FA8072",
-                      "#2E8B57", "#FF1493", "#1E90FF", "#FFD700", "#B22222", "#FF6347", "#40E0D0", "#808000", "#FF8C00", "#FF69B4",
-                      "#DB7093", "#20B2AA", "#00FF7F", "#7FFF00", "#4682B4", "#F08080", "#DAA520", "#FFA07A", "#9932CC", "#8B0000",
-                      "#7CFC00", "#D2691E", "#BC8F8F", "#8A2BE2", "#FA8072", "#2E8B57", "#FF1493", "#1E90FF", "#B22222", "#FF6347",
-                      "#000000", "#FFFFFF", "#00008B", "#008B8B", "#B8860B", "#A9A9A9", "#006400", "#8B008B", "#556B2F", "#FF8C00",
-                      "#9932CC", "#8B0000", "#E9967A", "#8FBC8F", "#483D8B", "#2F4F4F", "#00CED1", "#9400D3", "#FF1493", "#00BFFF",
-                      "#696969", "#1E90FF", "#B22222", "#FFFAF0", "#778795", "#FF00FF", "#DCDCDC", "#F8F8FF", "#FFD700", "#DAA520",
-                      "#ADFF2F", "#FF69B4", "#CD5C5C", "#8B4513", "#F0E68C", "#20B2AA", "#6A5ACD","#9370DB", "#00FF7F", "#9ACD32", 
-                      "#BDB76B", "#778899", "#FF8C00", "#BA55D3", "#4169E1", "#F08080", "#20B2AA", "#FF4500", "#ADFF2F", "#8A2BE2", 
-                      "#87CEEB", "#800000", "#bb9e5a", "#a552d8", "#1c92d7", "#84d72e", "#c81d90", "#d75325", "#5e2eb7", "#3f6a43", 
-                      "#b8c124", "#c62b38", "#d8a7df", "#51a1b1","#e5b43c", "#4cd3d4", "#cc4fe2", "#2a312b", "#675c58", "#57da5b", 
-                      "#d1e232", "#c2307f", "#b624b0", "#9fdbc4", "#6c4b17", "#8a8cda", "#e480ad", "#3c367a", "#dc68ba", "#4c3541", 
-                      "#29a948", "#6783f1", "#D4AC0D", "#1F618D", "#45B39D", "#B03A2E", "#6C3483", "#117864", "#CA6F1E", "#2E86C1", 
-                      "#A93226", "#229954", "#884EA0", "#F5B041", "#2C3E50", "#AF601A", "#641E16", "#2471A3", "#D68910", "#0E6251", 
-                      "#B2BABB", "#76448A", "#1D8348", "#D35400", "#566573", "#CB4335", "#7FB3D5", "#2980B9", "#A3E4D7", "#7D6608", 
-                      "#196F3D", "#78281F", "#2F4F4F", "#FF1493", "#5F9EA0", "#FFD700", "#8B0000", "#7CFC00", "#D2691E", "#00CED1",
-                        "#DC143C", "#556B2F", "#8B008B", "#8FBC8F", "#483D8B", "#00BFFF", "#A52A2A", "#DAA520",
-                        "#800080", "#FF4500", "#9ACD32", "#20B2AA", "#FF00FF", "#00008B", "#CD5C5C", "#F4A460",
-                        "#191970", "#FFA07A", "#808000", "#F5DEB3", "#C71585", "#FF6347", "#66CDAA", "#DB7093",
-                        "#9932CC", "#B8860B", "#708090", "#ADFF2F", "#E9967A", "#BA55D3", "#B0C4DE", "#DDA0DD",
-                        "#B22222", "#3CB371", "#F0E68C", "#BC8F8F", "#4682B4", "#FFB6C1", "#D8BFD8", "#008B8B",
-                        "#9400D3", "#CD853F", "#5F5F5F", "#A9A9A9", "#D3D3D3", "#9B30FF", "#800000", "#FF69B4", "#8B7D7B", "#F4A300",
-             "#7D9EC0", "#D8A7C5", "#B03060", "#A52A2A", "#708090", "#4B0082", "#FF4500", "#00FA9A",
-             "#B22222", "#FFD700", "#3CB371", "#9932CC", "#8B4513", "#32CD32", "#FF8C00", "#FF7F50",
-             "#F5F5F5", "#C0C0C0", "#4682B4", "#D2B48C", "#000080", "#B8860B", "#A52A2A", "#3E8E41",
-             "#D2691E", "#F08080", "#FF6347", "#DDA0DD", "#00008B", "#D3D3D3", "#2E8B57", "#FF1493",
-             "#ADFF2F", "#8B008B", "#8A2BE2", "#E6E6FA", "#FF00FF", "#7FFFD4", "#006400", "#E9967A",
-             "#F4A460", "#FFD700", "#C71585", "#DC143C", "#C0FF3E", "#FFD700", "#008B8B", "#6A5ACD", "#A9A9A9", "#B0E0E6", "#8A2BE2", "#4B0082", "#7CFC00", "#FF1493", "#E6E6FA", "#D3D3D3",
-             "#90EE90", "#D8BFD8", "#C71585", "#FFE4B5", "#ADFF2F", "#32CD32", "#00FA9A", "#FF6347",
-             "#FF8C00", "#FF4500", "#7B68EE", "#D2B48C", "#8B4513", "#BC8F8F", "#D2691E", "#C71585",
-             "#F4A460", "#8B008B", "#BDB76B", "#F0E68C", "#6A5ACD", "#708090", "#DDA0DD", "#FF7F50",
-             "#20B2AA", "#FF00FF", "#4682B4", "#B0C4DE", "#DC143C", "#FF6347", "#4E9F3D", "#F0E68C",
-             "#C0C0C0", "#B8860B", "#A52A2A", "#1E90FF", "#7FFFD4", "#8A2BE2", "#6A5ACD", "#D2691E",
-             "#00CED1", "#F5F5F5", "#2E8B57", "#40E0D0", "#D3D3D3", "#7CFC00", "#FFD700", "#BC8F8F")
-length(paleta)
 
 t_sne_location <- ggplot(tsne_result, aes(x = X1, y = X2, color = df$Location)) +
   geom_point(size = 3) +
@@ -282,7 +232,7 @@ t_sne_month <- ggplot(tsne_result, aes(x = X1, y = X2, color = df$Month)) +
         panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5)) + 
   scale_color_gradient(low = "blue", high = "red")
 
-  #He reformateado a numérico porque si no no podría representar una escala continua
+#He reformateado a numérico porque si no no podría representar una escala continua
 df$Latitude <- gsub(",", ".", df$Latitude)
 df$Latitude <- as.numeric(df$Latitude)
 df$Longitude <- gsub(",", ".", df$Longitude)
@@ -318,7 +268,8 @@ t_sne_sex <- ggplot(tsne_result, aes(x = X1, y = X2, color = df$Sex)) +
 
 list_tsne <- mget(ls(pattern = "^t_sne_"))
 wrap_plots(list_tsne, ncol = 2, nrow = 3)
-### MDS ###
+
+################ MDS ################ 
 
 data.mds <-sapply(df[,9:length(df)], as.numeric)
 # Utilizamos la funcion dist para calcular la matriz de distancias euclideas
@@ -381,43 +332,6 @@ mds_sex <- ggplot(mds.df, aes(x=X1, y=X2, color=df$Sex)) +
 list_mds <- mget(ls(pattern = "^mds_"))
 wrap_plots(list_mds, ncol = 2, nrow = 3)
 
-
-
-
-
-
-rank_names(phy_g)
-rank_names(phy_g)
-summarize_phyloseq(phy_b)
-meta(phy_b)
-tax_table(phy_b)
-abundances(phy_b)
-abundances(phy_b, "compositional")
-readcount(phy_b)[1:5]
-reads <- data.frame(reads = readcount(phy_b))
-DF <- psmelt(phy_b)
-summary(DF)
-DF <- rownames_to_column(DF)
-table(DF)
-sample_sums(phy_b)
-sample_names(phy_b)
-sample_variables(phy_b)
-ntaxa(phy_b)
-topx <- top_taxa(phy_b, n = 15)
-taxa(phy_b)
-#Rarefacción
-total = median(sample_sums(phy_g))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_g = transform_sample_counts(phy_g, standf)
-phy_g
-
-
-#Taxones más abundantes
-phy15 <- prune_taxa(taxa = topx, phy_b)
-phy15
-
-
-
 # ============================
 # ANÁLISIS COMPOSICIONAL
 # ============================
@@ -433,7 +347,7 @@ kingdom_counts <- table(kingdom_data)
 kingdom_df <- as.data.frame(kingdom_counts)
 colnames(kingdom_df) <- c("Superkingdom", "Count")
 # Crear el gráfico de "quesito"
-ggplot(kingdom_df, aes(x = "", y = Count, fill = Superkingdom)) +
+Plot_sector <- ggplot(kingdom_df, aes(x = "", y = Count, fill = Superkingdom)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar(theta = "y") +
   labs(title = "Composición de Reinos en el Microbioma") +
@@ -441,74 +355,6 @@ ggplot(kingdom_df, aes(x = "", y = Count, fill = Superkingdom)) +
   theme(legend.title = element_blank())   # Opcional: quitar el título de la leyenda
 
 ########### Gráficos composicionales ################
-  #Comenzaré visualizando el global, más que nada porque espero muchos
-  #microorganismos no clasificados
-plot_bar(phy_g_a, fill = "Phylum", title = "Rarefaccion A") +
-    scale_fill_manual(values = paleta) #Usando rarefacción A
-  #Viendo que no se observa bien del todo, voy a hacer un pruning, primero veo
-  #las abundancias y luego las voy a cortar
-abundance_g <- taxa_sums(phy_g)
-tax_table_data <- tax_table(phy_g)
-abundance_sorted <- sort(abundance_data, decreasing = TRUE)
-total_abundance <- sum(abundance_data)
-half_abundance <- sum(total_abundance*0.5)
-cumulative_abundance <- cumsum(abundance_sorted)
-taxa_to_keep <- names(cumulative_abundance[cumulative_abundance <= half_abundance | cumulative_abundance == half_abundance])
-
-# Realizar el prune_taxa para conservar solo estos taxones
-top_taxa(phy_g, n = 20)
-phy_top_rarefied <- prune_taxa(top_taxa(phy_g_rarefied, n=20), phy_g_rarefied)
-composition_rarefied <- plot_bar(phy_top_rarefied, fill="Genus") + scale_fill_manual(values=paleta)
-phy_top_a <- prune_taxa(top_taxa(phy_g_a, n=20), phy_g_a)
-composition_a <- plot_bar(phy_top_a, fill="Genus") + scale_fill_manual(values=paleta)
-    #He graficado la composicion de los mas abundante de rareficiado (unica opcion, si no queda fatal)
-    #Comparo los metodos proporcionales con absoluto
-comparacion_composicion_rareficada <- wrap_plots(list(composition_a, composition_rarefied),nrow = 2)
-print(comparacion_composicion_rareficada)
-#Los unk son porque no se ha elegido taxonomia en la BD, pero si que se tiene guardada
-#como especie potencial. Eso habria que comentarlo. Tengo que mirar con solo bacterias 
-#y solo virus porque a pesar de que los virus son muchos menos, al graficarlos globalmente
-#se representan bastante.
-top_taxa(phy_b, n = 20)
-phy_top_b <- prune_taxa(top_taxa(phy_b, n=20), phy_b)
-composition_b <- plot_bar(phy_top_b, fill="Phylum", title = "Composition b") + scale_fill_manual(values=paleta)
-print(composition_b)
-
-
-#Ordenar los gráficos por cada conjunto y rarefacción:
-  #Rarefacciones a bacterias y virus solo + top taxones
-  
-#Método A
-total = median(sample_sums(phy_b))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_b_a <- phy_b
-phy_b_a = transform_sample_counts(phy_b, standf)
-phy_b_a <- prune_taxa(top_taxa(phy_b_a, n = 20), phy_b_a)
-
-total = median(sample_sums(phy_v))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_v_a <- phy_v
-phy_v_a = transform_sample_counts(phy_v, standf)
-phy_v_a <- prune_taxa(top_taxa(phy_v_a, n=20), phy_v_a)
-#Metodo C
-phy_b_rarefied <- rarefy_even_depth(phy_b, sample.size = min(sample_sums(phy_b)), rngseed = 42)
-phy_b_rarefied <- prune_taxa(top_taxa(phy_b_rarefied, n=20), phy_b_rarefied)
-phy_v_rarefied <- rarefy_even_depth(phy_v, sample.size = min(sample_sums(phy_v)), rngseed = 42)
-phy_v_rarefied <- prune_taxa(top_taxa(phy_v_rarefied, n=20), phy_v_rarefied)
-  #Nuestros objetos son: phy_b/v_a y phy_b/v:rarefied.
-  #Ahora grafico la composicion con ambas rarefacciones y sin ella
-composition_b_a <- plot_bar(phy_b_a, fill="Genus", title = "Composition b-a") + scale_fill_manual(values=paleta)
-composition_b_rarefied <- plot_bar(phy_b_rarefied, fill="Genus", title = "Composition b-rarefied") + scale_fill_manual(values=paleta)
-composition_b <- plot_bar(phy_b, fill="Family", title = "Composition b") + scale_fill_manual(values=paleta)
-
-composition_v_a <- plot_bar(phy_v_a, fill="Genus", title = "Composition v-a") + scale_fill_manual(values=paleta)
-composition_v_rarefied <- plot_bar(phy_v_rarefied, fill="Genus", title = "Composition v-rarefied") + scale_fill_manual(values=paleta)
-composition_v <- plot_bar(phy_v, fill="Genus", title = "Composition v") + scale_fill_manual(values=paleta)
-
-comparacion_composicion_b <- wrap_plots(list(composition_b, composition_b_a, composition_b_rarefied), nrow = 3)
-comparacion_composicion_v <- wrap_plots(list(composition_v, composition_v_a, composition_v_rarefied), nrow = 3)
-    #Todo esto es a nivel de filo, pero habría que ir cambiandolo a diferentes
-
 
 #############                               #############
 ### FUNCIONES DE CREACIÓN Y VISUALIZACIÓN DE GRÁFICOS ### 
@@ -545,7 +391,6 @@ plot_bar_by_ranks <- function(physeq, paleta = NULL) {
   
   return(plot_bar_list)
 }
-global_por_rango <- plot_bar_by_ranks(phy_g_a)
 
 #Visualizador general de gráficos
 plotwatcher <- function(plotlist) {
@@ -561,7 +406,7 @@ plotwatcher <- function(plotlist) {
         cat("Visualizing plot by plot\n")
         print(plotlist[[i]])  # Mostrar el gráfico actual
         plotindex <- readline(prompt = "Choose an option: \n(1) Next plot\n(2) Previous plot\n(3) Exit\n")
-    
+        
         if (plotindex == "1" && i < length(plotlist)) {
           i <- i + 1  # Avanzar al siguiente gráfico
         } else if (plotindex == "2" && i > 1) {
@@ -579,7 +424,7 @@ plotwatcher <- function(plotlist) {
       library(patchwork)
       combined <- wrap_plots(lapply(plotlist, function(p) p + theme(legend.position = "none")))
       print(combined)
-  
+      
       break  # Salir después de mostrar todos los gráficos, no vuelvo al menú porque va a tardar y no quiero sobrecargar
     } else {
       cat("Invalid option. Please try again\n")
@@ -589,21 +434,33 @@ plotwatcher <- function(plotlist) {
   }
   cat("Exiting the function.\n")
 }
-plotwatcher(global_por_rango)
 
+
+#Objetos
+  #Composición
+global_por_rango <- plot_bar_by_ranks(phy_g_a)
+bacteria_composition <- plot_bar_by_ranks(phy_b_a)
+virus_composition <- plot_bar_by_ranks(phy_v_a)
+
+  #Visualizador
+Plot_sector
+plotwatcher(global_por_rango)
+plotwatcher(bacteria_composition)
+plotwatcher(virus_composition)
+
+################ RESULTADOS DEL APARTADO ################ 
+plotwatcher(global_por_rango)
+plotwatcher(bacteria_composition)
+plotwatcher(virus_composition)
+#Quedaría elegir gráfico definitivo, ver si lo hago con pruning (porque como está
+#Se visualiza bien), y solucionar los colores para fijarlos
 
 # ============================
 # ANÁLISIS DE DIVERSIDAD
 # ============================
 
-#En este apartado encontrarás:
-  #1 Diversidad alfa y beta general (todas las muestras) para dos índices en cada tipo
-  #2 Diversidad alfa y beta para los diferentes tipos de variables con los mismos dos índices
-  #3 Test esadísticos para evauar diferencias entre variables
+################ Riqueza general ################ 
 
-#1#
-#!!! MUY IMPORTANTE, EN ESTE CASO EL SIMPSON ES SIMPSON INVERSO, OSEA 0 BAJA DIVERSIDAD 1 ALTA !!!
-  #Diversidad global en cada conjunto (ALFA)
 Riqueza_bacteriana <- plot_richness(phy_b, x = "Country", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana") + 
   geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
   geom_violin(alpha = 0.6) +
@@ -624,144 +481,301 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Índice alfa diversidad")
 
-#2#
-plot_richness_by_variables <- function(physeq) {
-  library(phyloseq)
-  library(ggplot2)
-  
-  #Lista donde se guardaron los gráficos generados
-  plot_bar_list <- list()
-  
-  #Iterar sobre cada rango taxonómico del objeto physeq
-  for (variable in colnames(sample_data(physeq))) {
-    plot_bar_list[[variable]] <- plot_richness(physeq, x = variable, measures = c("Shannon", "Simpson"), title = paste("Diversidad por", variable)) + 
-      geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
-      geom_boxplot(alpha = 0.6) +
-      theme_bw() +
-      theme(panel.grid = element_line(color = "grey", size = 0.5), 
-            plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
-            axis.text.x = element_text(angle = 90))
+################ Riqueza por variable ################ 
+
+#ALPHA
+  #Creador de gráficos de riqueza alfa para cada rango taxonómico
+  plot_richness_by_variables <- function(physeq) {
+    library(phyloseq)
+    library(ggplot2)
+    
+    #Lista donde se guardaron los gráficos generados
+    plot_bar_list <- list()
+    
+    #Iterar sobre cada rango taxonómico del objeto physeq
+    for (variable in colnames(sample_data(physeq))) {
+      plot_bar_list[[variable]] <- plot_richness(physeq, x = variable, measures = c("Shannon", "Simpson"), title = paste("Diversidad por", variable)) + 
+        geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+        geom_boxplot(alpha = 0.6) +
+        theme_bw() +
+        theme(panel.grid = element_line(color = "grey", size = 0.5), 
+              plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+              axis.text.x = element_text(angle = 90))
       ylab(label = "Índice alfa diversidad")
-  }
- 
-  return(plot_bar_list)
-}
-Riqueza_g <- plot_richness_by_variables(phy_g)
-Riqueza_b <- plot_richness_by_variables(phy_b)
-Riqueza_v <- plot_richness_by_variables(phy_v)
-plotwatcher(Riqueza_b)
-plotwatcher(Riqueza_v)
-plotwatcher(Riqueza_g)
-
-#3#
-  #Kruskal wallis
-df_alpha <- estimate_richness(phy_b, measures = c("Shannon", "Simpson")) %>%
-  cbind(sample_data(phy_b))
-kw_shannon <- kruskal.test(Shannon ~ Location, data = df_alpha)
-kw_simpson <- kruskal.test(Simpson ~ Location, data = df_alpha)
-library(FSA) #El dunn test es para ver entre que grupos existen estas difs
-dunnTest(Shannon ~ Location, data = df_alpha, method = "bh") #El metodo es por false discovery rate(investigar)
-# Convertir los resultados a tibble
-alpha_stats <- tibble(
-  Index = c("Shannon", "Simpson"),
-  Statistic = c(kw_shannon$statistic, kw_simpson$statistic),
-  Df = c(kw_shannon$parameter, kw_simpson$parameter),
-  P_value = c(kw_shannon$p.value, kw_simpson$p.value)
-)
-
-# Ver resultado
-print(alpha_stats)
-
-alpha_stats %>%
-  gt() %>%
-  fmt_number(columns = where(is.numeric), decimals = 3) %>%
-  tab_header(title = "Resultados Kruskal-Wallis para diversidad alfa")
-
-
-#1#
-#Diversidad global en cada conjunto (BETA), #Aqui solo se aprecia la variable sex
-plot_bray_richness_by_variables <- function(physeq){
-  dist_bray <- distance(physeq, method = "bray")
-  ordination <- ordinate(physeq, method = "PCoA", distance = dist_bray)
-  for (variable in colnames(sample_data(physeq))) {
-    if (is.numeric(sample_data(physeq)[[variable]])) {
-      scale <- scale_color_gradient(low = "blue", high = "red")
-    } else {
-      scale <- scale_color_manual(values = paleta)
     }
-    plot_bar_list[[variable]] <- plot_ordination(phy_b, ordination, color = variable) +
-      scale +
-      geom_point(size = 3) +
-      theme_minimal() +
-      ggtitle("Diversidad beta- Bray Curtis")
-  }
-  return(plot_bar_list)
-}
-plot_jaccard_richness_by_variables <- function(physeq){
-  dist_jaccard <- distance(physeq, method = "jaccard")
-  ordination <- ordinate(physeq, method = "PCoA", distance = dist_jaccard)
-  for (variable in colnames(sample_data(physeq))) {
-    if (is.numeric(sample_data(physeq)[[variable]])) {
-      scale <- scale_color_gradient(low = "blue", high = "red")
-    } else {
-      scale <- scale_color_manual(values = paleta)
+    
+    return(plot_bar_list)
+  }##Función de riqueza alfa por variables
+  
+    #Objetos de riqueza
+    Riqueza_g <- plot_richness_by_variables(phy_g)
+    Riqueza_b <- plot_richness_by_variables(phy_b)
+    Riqueza_v <- plot_richness_by_variables(phy_v)
+    #Visualizador
+    plotwatcher(Riqueza_g)
+    plotwatcher(Riqueza_b)
+    plotwatcher(Riqueza_v)
+
+  #Test estadístico Kruskal Wallis
+  kw_by_variables <- function(physeq) {
+    df_alpha <- estimate_richness(physeq, measures = c("Shannon", "Simpson")) %>%
+      cbind(sample_data(physeq))
+    
+    results <- list()
+    
+    for (variable in sample_variables(physeq)) {
+      # Saltar si la variable tiene solo un valor único
+      if (length(unique(df_alpha[[variable]])) < 2) next
+      
+      formula_shannon <- as.formula(paste("Shannon ~", variable))
+      formula_simpson <- as.formula(paste("Simpson ~", variable))
+      
+      test_shannon <- kruskal.test(formula_shannon, data = df_alpha)
+      test_simpson <- kruskal.test(formula_simpson, data = df_alpha)
+      
+      results[[variable]] <- tibble(
+        Variable = variable,
+        Index = c("Shannon", "Simpson"),
+        Statistic = c(test_shannon$statistic, test_simpson$statistic),
+        Df = c(test_shannon$parameter, test_simpson$parameter),
+        P_value = c(test_shannon$p.value, test_simpson$p.value)
+      )
     }
-    plot_bar_list[[variable]] <- plot_ordination(phy_b, ordination, color = variable) +
-      scale +
-      geom_point(size = 3) +
-      theme_minimal() +
-      ggtitle("Diversidad beta- Jaccard")
-  }
-  return(plot_bar_list)
-}
+    
+    bind_rows(results)
+  } ##Función de Kruskal Wallis por variables
+  
+    #Resultados (Visualización)
+    bacteria_alpha_kw <- kw_by_variables(phy_b_a)
+    bacteria_alpha_kw <- bacteria_alpha_kw %>%
+      gt() %>%
+      fmt_number(columns = where(is.numeric), decimals = 3) %>%
+      tab_header(title = "Resultados Kruskal-Wallis para diversidad alfa por variable")
+    
+    virus_alpha_kw <- kw_by_variables(phy_v_a)
+    virus_alpha_kw <- virus_alpha_kw %>%
+      gt() %>%
+      fmt_number(columns = where(is.numeric), decimals = 3) %>%
+      tab_header(title = "Resultados Kruskal-Wallis para diversidad alfa por variable")
+    
+  #Test estadístico dunn para analizar qué grupos son diferentes significativamente
+    dunn_by_variables <- function(physeq) {
+      df_alpha <- estimate_richness(physeq, measures = c("Shannon", "Simpson")) %>%
+        cbind(sample_data(physeq))
+      
+      results <- list()
+      
+      for (variable in sample_variables(physeq)) {
+        # Saltar variables con < 3 niveles únicos
+        if (length(unique(df_alpha[[variable]])) < 3) next
+        
+        for (index in c("Shannon", "Simpson")) {
+          formula <- as.formula(paste(index, "~", variable))
+          
+          dunn_res <- dunnTest(formula, data = df_alpha, method = "bh")
+          
+          dunn_df <- dunn_res$res %>%
+            mutate(
+              Variable = variable,
+              Index = index
+            ) %>%
+            rename(
+              Comparison = Comparison,
+              Z = Z,
+              P_uncorrected = P.unadj,
+              P_adjusted = P.adj
+            ) %>%
+            select(Variable, Index, Comparison, Z, P_uncorrected, P_adjusted)
+          
+          results[[paste(variable, index, sep = "_")]] <- dunn_df
+        }
+      }
+      
+      bind_rows(results)
+    } ##Función de dunn por variables
+    bacteria_dunn_res <- dunn_by_variables(phy_b_a)
+    virus_dunn_res <- dunn_by_variables(phy_v_a)
+    
+    #Resultados (visualización)
+     bacteria_dunn_res <- bacteria_dunn_res %>%
+      filter(P_adjusted < 0.05) %>%
+      gt() %>%
+      fmt_number(columns = where(is.numeric), decimals = 3) %>%
+      tab_header(title = "Resultados de pruebas de Dunn post-hoc (Bacteria)")
+     virus_dunn_res <- virus_dunn_res %>%
+       filter(P_adjusted < 0.05) %>%
+       gt() %>%
+       fmt_number(columns = where(is.numeric), decimals = 3) %>%
+       tab_header(title = "Resultados de pruebas de Dunn post-hoc (Virus)")
 
-bacteria_bray <- plot_bray_richness_by_variables(phy_b)
-plotwatcher(bacteria_bray)
-bacteria_jaccard <- plot_jaccard_richness_by_variables(phy_b)
-plotwatcher(bacteria_jaccard)
-virus_bray <- plot_bray_richness_by_variables(phy_v)
-plotwatcher(virus_bray)
-virus_jaccard <- plot_jaccard_richness_by_variables(phy_v)
-plotwatcher(virus_jaccard)
-#3#
-  #PERMANOVA
-library(vegan)
-sample_df <- as(sample_data(phy_b), "data.frame")
-permanova_res <- adonis2(dist_bray ~ Location, data = sample_df)
-permanova_tbl <- as.data.frame(permanova_res) %>%
-  rownames_to_column(var = "Term") %>%
-  as_tibble()
-print(permanova_tbl)
-library(gt)
+#BETA
+     #Creador de gráficos de riqueza beta para cada rango taxonómico
+     plot_bray_richness_by_variables <- function(physeq){
+       dist_bray <- distance(physeq, method = "bray")
+       ordination <- ordinate(physeq, method = "PCoA", distance = dist_bray)
+       for (variable in colnames(sample_data(physeq))) {
+         if (is.numeric(sample_data(physeq)[[variable]])) {
+           scale <- scale_color_gradient(low = "blue", high = "red")
+         } else {
+           scale <- scale_color_manual(values = paleta)
+         }
+         plot_bar_list[[variable]] <- plot_ordination(phy_b, ordination, color = variable) +
+           scale +
+           geom_point(size = 3) +
+           theme_minimal() +
+           ggtitle("Diversidad beta- Bray Curtis")
+       }
+       return(plot_bar_list)
+     } ##Función de diversidad beta Bray-Curtis por variables
+     plot_jaccard_richness_by_variables <- function(physeq){
+       dist_jaccard <- distance(physeq, method = "jaccard")
+       ordination <- ordinate(physeq, method = "PCoA", distance = dist_jaccard)
+       for (variable in colnames(sample_data(physeq))) {
+         if (is.numeric(sample_data(physeq)[[variable]])) {
+           scale <- scale_color_gradient(low = "blue", high = "red")
+         } else {
+           scale <- scale_color_manual(values = paleta)
+         }
+         plot_bar_list[[variable]] <- plot_ordination(phy_b, ordination, color = variable) +
+           scale +
+           geom_point(size = 3) +
+           theme_minimal() +
+           ggtitle("Diversidad beta- Jaccard")
+       }
+       return(plot_bar_list)
+     } ##Función de diversidad beta Jaccard por variables
+     
+       #Objetos de riqueza
+       bacteria_bray <- plot_bray_richness_by_variables(phy_b)
+       bacteria_jaccard <- plot_jaccard_richness_by_variables(phy_b)
+       virus_bray <- plot_bray_richness_by_variables(phy_v)
+       virus_jaccard <- plot_jaccard_richness_by_variables(phy_v)
+       
+       #Visualizador
+       plotwatcher(bacteria_bray)
+       plotwatcher(bacteria_jaccard)
+       plotwatcher(virus_bray)
+       plotwatcher(virus_jaccard)
+     
+       #Test estadístico PERMANOVA para analizar qué variables producen efectos significativos sobre la diversidad
+        #Preparación (matriz de distancias y metadatos)
+       dist_bray_b <- distance(phy_b_a, method = "bray")
+       dist_bray_v <- distance(phy_v_a, method = "bray")
+       dist_jaccard_b <- distance(phy_b_a, method = "jaccard")
+       dist_jaccard_v <- distance(phy_v_a, method = "jaccard")
+       sample_df_b <- as(sample_data(phy_b_a), "data.frame") #Extraer metadatos
+       sample_df_v <- as(sample_data(phy_v_a), "data.frame") #Extraer metadatos
+        
+        #PERMANOVA
+       permanova_b_res_location <- adonis2(dist_bray_b ~ Location, data = sample_df_b) #Permanova por localidad
+       permanova_b_res_year <- adonis2(dist_bray_b ~ Year, data = sample_df_b) #Permanova por año
+       permanova_b_res_latitude <- adonis2(dist_bray_b ~ Latitude, data = sample_df_b) #Permanova por latitud
+       permanova_b_res_longitude <- adonis2(dist_bray_b ~ Longitude, data = sample_df_b) #Permanova por longitud
+       permanova_b_res_sex <- adonis2(dist_bray_b ~ Sex, data = sample_df_b) #Permanova por sexo
+       
+       permanova_v_res_location <- adonis2(dist_bray_v ~ Location, data = sample_df) #Permanova por localidad
+       permanova_v_res_year <- adonis2(dist_bray_v ~ Year, data = sample_df) #Permanova por año
+       permanova_v_res_latitude <- adonis2(dist_bray_v ~ Latitude, data = sample_df) #Permanova por latitud
+       permanova_v_res_longitude <- adonis2(dist_bray_v ~ Longitude, data = sample_df) #Permanova por longitud
+       permanova_v_res_sex <- adonis2(dist_bray_v ~ Sex, data = sample_df) #Permanova por sexo
 
-permanova_tbl %>%
-  gt() %>%
-  fmt_number(columns = where(is.numeric), decimals = 3) %>%
-  tab_header(title = "Resultados de PERMANOVA (Bray-Curtis)")
+       permanova_b_res_location2 <- adonis2(dist_jaccard_b ~ Location, data = sample_df_b) #Permanova por localidad
+       permanova_b_res_year2 <- adonis2(dist_jaccard_b ~ Year, data = sample_df_b) #Permanova por año
+       permanova_b_res_latitude2 <- adonis2(dist_jaccard_b ~ Latitude, data = sample_df_b) #Permanova por latitud
+       permanova_b_res_longitude2 <- adonis2(dist_jaccard_b ~ Longitude, data = sample_df_b) #Permanova por longitud
+       permanova_b_res_sex2 <- adonis2(dist_jaccard_b ~ Sex, data = sample_df_b) #Permanova por sexo
+       
+       permanova_v_res_location2 <- adonis2(dist_jaccard_v ~ Location, data = sample_df) #Permanova por localidad
+       permanova_v_res_year2 <- adonis2(dist_jaccard_v ~ Year, data = sample_df) #Permanova por año
+       permanova_v_res_latitude2 <- adonis2(dist_jaccard_v ~ Latitude, data = sample_df) #Permanova por latitud
+       permanova_v_res_longitude2 <- adonis2(dist_jaccard_v ~ Longitude, data = sample_df) #Permanova por longitud
+       permanova_v_res_sex2 <- adonis2(dist_jaccard_v ~ Sex, data = sample_df) #Permanova por sexo
+       
+        #visualización PERMANOVA (Bray)
+         # Convertir resultados bacterias
+         permanova_tbl_b <- bind_rows(
+           Location  = as_tibble(permanova_b_res_location, rownames = "Term"),
+           Year      = as_tibble(permanova_b_res_year, rownames = "Term"),
+           Latitude  = as_tibble(permanova_b_res_latitude, rownames = "Term"),
+           Longitude = as_tibble(permanova_b_res_longitude, rownames = "Term"),
+           Sex       = as_tibble(permanova_b_res_sex, rownames = "Term"),
+           .id = "Variable"
+         ) %>% mutate(Grupo = "Bacterias")
+         
+         # Convertir resultados virus
+         permanova_tbl_v <- bind_rows(
+           Location  = as_tibble(permanova_v_res_location, rownames = "Term"),
+           Year      = as_tibble(permanova_v_res_year, rownames = "Term"),
+           Latitude  = as_tibble(permanova_v_res_latitude, rownames = "Term"),
+           Longitude = as_tibble(permanova_v_res_longitude, rownames = "Term"),
+           Sex       = as_tibble(permanova_v_res_sex, rownames = "Term"),
+           .id = "Variable"
+         ) %>% mutate(Grupo = "Virus")
+         
+         permanova_tbl_bray <- bind_rows(permanova_tbl_b, permanova_tbl_v)
+         # Usamos dplyr para dejar en blanco los valores repetidos de la columna Variable
+         permanova_tbl_bray <- permanova_bray %>%
+           arrange(Grupo, Variable, Term) %>%
+           mutate(Variable = if_else(duplicated(Variable) & duplicated(paste(Grupo, Variable)), "", Variable))
+         Permanova_res_bray <-permanova_tbl_bray %>%
+           select(Grupo, Variable, Term, everything()) %>%
+           gt() %>%
+           fmt_number(columns = where(is.numeric), decimals = 3) %>%
+           tab_header(title = "Resultados de PERMANOVA (Bray-Curtis)")
 
+         #visualización PERMANOVA (Jaccard)
+           # Convertir resultados bacterias
+           permanova_tbl_b2 <- bind_rows(
+             Location  = as_tibble(permanova_b_res_location2, rownames = "Term"),
+             Year      = as_tibble(permanova_b_res_year2, rownames = "Term"),
+             Latitude  = as_tibble(permanova_b_res_latitude2, rownames = "Term"),
+             Longitude = as_tibble(permanova_b_res_longitude2, rownames = "Term"),
+             Sex       = as_tibble(permanova_b_res_sex2, rownames = "Term"),
+             .id = "Variable"
+           ) %>% mutate(Grupo = "Bacterias")
+           
+           # Convertir resultados virus
+           permanova_tbl_v2 <- bind_rows(
+             Location  = as_tibble(permanova_v_res_location2, rownames = "Term"),
+             Year      = as_tibble(permanova_v_res_year2, rownames = "Term"),
+             Latitude  = as_tibble(permanova_v_res_latitude2, rownames = "Term"),
+             Longitude = as_tibble(permanova_v_res_longitude2, rownames = "Term"),
+             Sex       = as_tibble(permanova_v_res_sex2, rownames = "Term"),
+             .id = "Variable"
+           ) %>% mutate(Grupo = "Virus")
+           
+           permanova_tbl2 <- bind_rows(permanova_tbl_b2, permanova_tbl_v2)
+           
+           # Usamos dplyr para dejar en blanco los valores repetidos de la columna Variable
+           permanova_tbl_clean2 <- permanova_tbl2 %>%
+             arrange(Grupo, Variable, Term) %>%
+             mutate(Variable = if_else(duplicated(Variable) & duplicated(paste(Grupo, Variable)), "", Variable))
+           
+           Permanova_res_jaccard <- permanova_tbl_clean2 %>%
+             select(Grupo, Variable, Term, everything()) %>%
+             gt() %>%
+             fmt_number(columns = where(is.numeric), decimals = 3) %>%
+             tab_header(title = "Resultados de PERMANOVA (Jaccard)")
 
-###### Gráficos ###########
-
-plot_bar(phy15, fill = "Family", title = "Título") 
-
-plot_heatmap(phy15, method = "NMDS", distance = "bray")
-
-plot_richness(phy15, measures = c("Shannon", "Simpson"))
-
-phy.ord <- ordinate(phy, "NMDS", "bray")
-plot_ordination(phy, phy.ord, type = "biplot") + geom_point(size=3) 
-plot_ordination(phy, phy.ord, type="split", color="Class", 
-                title="biplot") +  
-  geom_point(size=3)
-
-plot_net(phy15, distance = "(A+B-2*J)/(A+B)", type = "taxa", 
-         maxdist = 0.7, color="Class", point_label="Genus")
-net <- make_network(phy15, max.dist = 2)
-plot_network(net, phy15, type = "taxa")
-plot_tree(phy)
-
-
-
-
-
-
+################ RESULTADOS DEL APARTADO ################ 
+  #Riqueza alfa general
+  Riqueza_bacteriana
+  Riqueza_viral
+  #Riqueza alfa por variable
+  plotwatcher(Riqueza_g)
+  plotwatcher(Riqueza_b)
+  plotwatcher(Riqueza_v)
+  #Kruskal wallis para riqueza alfa
+  bacteria_alpha_kw
+  virus_alpha_kw
+  #Test dunn para kruskal wallis pairwise (sorteado por significativo)
+  bacteria_dunn_res
+  virus_dunn_res
+  #Riqueza beta por variable
+  plotwatcher(bacteria_bray)
+  plotwatcher(bacteria_jaccard)
+  plotwatcher(virus_bray)
+  plotwatcher(virus_jaccard)
+  #Test estadístico PERMANOVA por variable de diversidad beta
+  Permanova_res_bray
+  Permanova_res_jaccard
