@@ -9,7 +9,7 @@ library(Rtsne) #t-sne package
 library(vegan) #Microbiome package; used for PERMANOVA
 library(FSA) #dunn test
 library(gt) #Plot tibbles
-
+library(tidyr)
 # ============================
 # PREPROCESAMIENTO
 # ============================
@@ -114,6 +114,11 @@ standf = function(x, t=total) round(t*(x/sum(x)))
 phy_g_a <- phy_g
 phy_g_a = transform_sample_counts(phy_g, standf)
 
+total = median(sample_sums(phy_v))
+standf = function(x, t=total) round(t*(x/sum(x)))  
+phy_v_a <- phy_v
+phy_v_a = transform_sample_counts(phy_v, standf)
+
 total = median(sample_sums(phy_b))
 standf = function(x, t=total) round(t*(x/sum(x)))  
 phy_b_a <- phy_b
@@ -125,13 +130,115 @@ phy_v_a <- phy_v
 phy_v_a = transform_sample_counts(phy_v, standf)
 #Número de muestras por punto de muestreo (para hacer el mapa, no voy a sobrecargarlo
 #con sitios que solo tienen 1, de cara a agruparlas por zonas)
-ggplot(SAMPLES, aes(x = Location)) +
+sample_per_location <- ggplot(SAMPLES, aes(x = Location)) +
   geom_bar() +
   labs(title = "Número de muestras por punto de muestreo",
        x = "Punto de muestreo",
        y = "Frecuencia") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90))
+#Resumen de parámetros globales, bacterianos y virales
+phy_statistics <- function(x) {
+  # Calcular las estadísticas globales
+  
+  # Total de lecturas para todas las muestras
+  total_reads <- sum(sample_sums(x))
+  
+  # Número total de OTUs en el dataset
+  n_otu <- nrow(otu_table(x))
+  
+  # Media y mediana de lecturas (en este caso por todas las muestras)
+  mean_reads <- mean(sample_sums(x))
+  median_reads <- median(sample_sums(x))
+  
+  # Desviación estándar de lecturas (para todas las muestras)
+  devs <- sd(sample_sums(x))
+  
+  # Mínimo y máximo de lecturas entre todas las muestras
+  min_reads <- min(sample_sums(x))
+  max_reads <- max(sample_sums(x))
+  
+  # Calcular los índices de diversidad globales (Shannon y Simpson)
+  diversity <- estimate_richness(x, measures = c("Shannon", "Simpson"))
+  
+  # Calcular la distancia beta
+  beta_b <- distance(x, method = c("bray"), weighted = TRUE)
+  beta_j <- distance(x, method = c("jaccard"), weighted = TRUE)
+  
+  # Crear un tibble con los resultados globales
+  stats_tibble <- tibble(
+    TotalReads = total_reads,
+    NumOTUs = n_otu,
+    MeanReads = mean_reads,
+    MedianReads = median_reads,
+    SDReads = devs,
+    MinReads = min_reads,
+    MaxReads = max_reads,
+    ShannonDiversity = mean(diversity$Shannon),  # Promedio global de Shannon
+    SimpsonDiversity = mean(diversity$Simpson),   # Promedio global de Simpson
+    BrayDiversity = mean(beta_b), # Promedio global de Bray-Curtis
+    JaccardDiversity = mean(beta_j) # Promedio global de Jaccard
+  )
+  
+  # Devolver el tibble con las estadísticas globales
+  return(stats_tibble)
+}
+phy_b_statistics <- phy_statistics(phy_b)
+phy_v_statistics <- phy_statistics(phy_v)
+phy_g_statistics <- phy_statistics(phy_g)
+# Crear el tibble final con los estadísticos
+final_statistics <- tibble(
+  Type = c("Bacteria", "Virus", "Global"),
+  TotalReads = c(phy_b_statistics$TotalReads, phy_v_statistics$TotalReads, phy_g_statistics$TotalReads),
+  NumOTUs = c(phy_b_statistics$NumOTUs, phy_v_statistics$NumOTUs, phy_g_statistics$NumOTUs),
+  MeanReads = c(phy_b_statistics$MeanReads, phy_v_statistics$MeanReads, phy_g_statistics$MeanReads),
+  MedianReads = c(phy_b_statistics$MedianReads, phy_v_statistics$MedianReads, phy_g_statistics$MedianReads),
+  SDReads = c(phy_b_statistics$SDReads, phy_v_statistics$SDReads, phy_g_statistics$SDReads),
+  MinReads = c(phy_b_statistics$MinReads, phy_v_statistics$MinReads, phy_g_statistics$MinReads),
+  MaxReads = c(phy_b_statistics$MaxReads, phy_v_statistics$MaxReads, phy_g_statistics$MaxReads),
+  ShannonDiversity = c(phy_b_statistics$ShannonDiversity, phy_v_statistics$ShannonDiversity, phy_g_statistics$ShannonDiversity),
+  SimpsonDiversity = c(phy_b_statistics$SimpsonDiversity, phy_v_statistics$SimpsonDiversity, phy_g_statistics$SimpsonDiversity),
+  BrayDiversity = c(phy_b_statistics$BrayDiversity, phy_v_statistics$BrayDiversity, phy_g_statistics$BrayDiversity),
+  JaccardDiversity = c(phy_b_statistics$JaccardDiversity, phy_v_statistics$JaccardDiversity, phy_g_statistics$JaccardDiversity)
+)
+colnames(final_statistics) <- c(
+  "Type",
+  "Total Reads",
+  "Number of OTUs",
+  "Mean Reads",
+  "Median Reads",
+  "Standard Deviation of Reads",
+  "Minimum Reads",
+  "Maximum Reads",
+  "Shannon Diversity",
+  "Simpson Diversity",
+  "Bray-Curtis Diversity",
+  "Jaccard Diversity"
+)
+# Usamos pivot_wider para convertir las métricas en filas y los tipos en columnas
+final_statistics_wide <- final_statistics %>%
+  pivot_longer(cols = -Type, names_to = "Metric", values_to = "Value") %>%
+  pivot_wider(names_from = Type, values_from = Value)
+
+# Crear la tabla con gt sin anotación científica
+gt_table <- final_statistics_wide %>%
+  gt() %>%
+  tab_header(
+    title = "Resumen de Estadísticos"
+  ) %>%
+  cols_label(
+    Metric = "Parámetro",
+    `Bacteria` = "Bacteria",
+    `Virus` = "Virus",
+    `Global` = "Global"
+  ) %>%
+  tab_options(
+    table.width = pct(80)
+  ) %>%
+  fmt_number(decimals = 2)
+
+# Mostrar la tabla
+gt_table
 
 # ============================
 # ANÁLISIS EXPLORATORIO (ML)
@@ -288,7 +395,7 @@ mds_location <- ggplot(mds.df, aes(x=X1, y=X2, color=df$Location)) +
   theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(),
         panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5))
 
-mds_year <- ggplot(tsne_result, aes(x = X1, y = X2, color = df$Year)) +
+mds_year <- ggplot(mds.df, aes(x = X1, y = X2, color = df$Year)) +
   geom_point(size = 3) +
   labs(title = "MDS Year", x = "X1", y = "X2") +
   theme_classic() +
@@ -334,7 +441,7 @@ wrap_plots(list_mds, ncol = 2, nrow = 3)
 # ANÁLISIS COMPOSICIONAL
 # ============================
 
-#### Gráfico de sectores de la composición por reino ####
+#### Gráfico de la composición por reino ####
 # Obtener la tabla de taxonomía
 tax_table_data <- tax_table(phy_g)
 # Asegúrate de que la columna correspondiente al reino esté presente (normalmente es la primera columna)
@@ -345,13 +452,29 @@ kingdom_counts <- table(kingdom_data)
 kingdom_df <- as.data.frame(kingdom_counts)
 colnames(kingdom_df) <- c("Superkingdom", "Count")
 # Crear el gráfico de "quesito"
-Plot_sector <- ggplot(kingdom_df, aes(x = "", y = Count, fill = Superkingdom)) +
+plot_sector <- ggplot(kingdom_df, aes(x = "", y = Count, fill = Superkingdom)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar(theta = "y") +
   labs(title = "Composición de Reinos en el Microbioma") +
   theme_void() +  # Elimina el fondo para que sea un gráfico de "quesito"
   theme(legend.title = element_blank())   # Opcional: quitar el título de la leyenda
-
+plot_reads <- plot_bar(phy_g_a, fill = "Superkingdom") +
+  labs(
+    title = "Abundancia relativa total de Bacteria y Virus",
+    x = "Muestras",
+    y = "Abundancia relativa"
+  ) +
+  scale_fill_brewer(palette = "Set2", name = "Dominio") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+    axis.text.y = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank()
+  )
 ########### Gráficos composicionales ################
 
 #############                               #############
@@ -394,7 +517,6 @@ plot_bar_by_ranks <- function(physeq, paleta = NULL) {
 plotwatcher <- function(plotlist) {
   cat("Welcome to plotwatcher, write a number in the terminal for the following:") 
   option <- readline(prompt = "Select an option: \n(1) Visualize plot by plot\n(2) Visualize plots together\n(3) Exit\n")
-  plotlist <- plotlist
   i <- 1 
   
   while (option != "3") {
@@ -433,7 +555,13 @@ plotwatcher <- function(plotlist) {
   cat("Exiting the function.\n")
 }
 
-
+# Función para seleccionar los N taxones más abundantes
+get_top_taxa <- function(physeq_object, top_n = 15) {
+  taxa_sums_all <- taxa_sums(physeq_object)
+  top_taxa <- names(sort(taxa_sums_all, decreasing = TRUE)[1:top_n])
+  pruned_object <- prune_taxa(top_taxa, physeq_object)
+  return(pruned_object)
+}
 #Objetos
   #Composición
 global_por_rango <- plot_bar_by_ranks(phy_g_a)
@@ -445,6 +573,50 @@ Plot_sector
 plotwatcher(global_por_rango)
 plotwatcher(bacteria_composition)
 plotwatcher(virus_composition)
+
+  #Pruning
+phy_b_top15 <- get_top_taxa(phy_b, top_n = 100)
+phy_v_top15 <- get_top_taxa(phy_v, top_n = 30
+
+#Gráficos definitivos
+  #Bacteria
+bacteria_genera <- plot_bar(phy_b_top15, fill = "Genus") +
+  labs(title = paste("Composición de la microbiota bacteriana por género")) +
+  theme_minimal(base_size = 12) +
+  labs(x = "Muestras", fill = "Género") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+    axis.text.y = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
+  ) +
+  scale_y_continuous(limits = c(0, 100))  # Limita el eje Y hasta 100
+  #Virus
+virus_genera <- plot_bar(phy_v_a, fill = "Genus") +
+  labs(title = paste("Composición de la microbiota vírica por género")) +
+  theme_minimal(base_size = 12) +
+  scale_fill_manual(values = paleta) +
+  labs(x = "Muestras", fill = "Género") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+    axis.text.y = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
+  ) +
+  scale_y_continuous(limits = c(0, 100))  # Limita el eje Y hasta 100
+
+#### Filtrar para mantener solo géneros conocidos (Esto debatirlo)
+phy_b_known <- subset_taxa(phy_b_a, Genus != "unk_g")
+phy_b_top <- prune_taxa(names(sort(taxa_sums(phy_b_a), decreasing = TRUE)[1:15]), phy_b_a)
+
 
 ################ RESULTADOS DEL APARTADO ################ 
 plotwatcher(global_por_rango)
@@ -544,13 +716,13 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
   } ##Función de Kruskal Wallis por variables
   
     #Resultados (Visualización)
-    bacteria_alpha_kw <- kw_by_variables(phy_b_a)
+    bacteria_alpha_kw <- kw_by_variables(phy_b)
     bacteria_alpha_kw <- bacteria_alpha_kw %>%
       gt() %>%
       fmt_number(columns = where(is.numeric), decimals = 3) %>%
       tab_header(title = "Resultados Kruskal-Wallis para diversidad alfa por variable")
     
-    virus_alpha_kw <- kw_by_variables(phy_v_a)
+    virus_alpha_kw <- kw_by_variables(phy_v)
     virus_alpha_kw <- virus_alpha_kw %>%
       gt() %>%
       fmt_number(columns = where(is.numeric), decimals = 3) %>%
@@ -591,8 +763,8 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
       
       bind_rows(results)
     } ##Función de dunn por variables
-    bacteria_dunn_res <- dunn_by_variables(phy_b_a)
-    virus_dunn_res <- dunn_by_variables(phy_v_a)
+    bacteria_dunn_res <- dunn_by_variables(phy_b)
+    virus_dunn_res <- dunn_by_variables(phy_v)
     
     #Resultados (visualización)
      bacteria_dunn_res <- bacteria_dunn_res %>%
@@ -609,6 +781,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
 #BETA
      #Creador de gráficos de riqueza beta para cada rango taxonómico
      plot_bray_richness_by_variables <- function(physeq){
+       plot_bar_list <- list()
        dist_bray <- distance(physeq, method = "bray")
        ordination <- ordinate(physeq, method = "PCoA", distance = dist_bray)
        for (variable in colnames(sample_data(physeq))) {
@@ -626,6 +799,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
        return(plot_bar_list)
      } ##Función de diversidad beta Bray-Curtis por variables
      plot_jaccard_richness_by_variables <- function(physeq){
+       plot_bar_list <- list()
        dist_jaccard <- distance(physeq, method = "jaccard")
        ordination <- ordinate(physeq, method = "PCoA", distance = dist_jaccard)
        for (variable in colnames(sample_data(physeq))) {
@@ -657,12 +831,12 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
      
        #Test estadístico PERMANOVA para analizar qué variables producen efectos significativos sobre la diversidad
         #Preparación (matriz de distancias y metadatos)
-       dist_bray_b <- distance(phy_b_a, method = "bray")
-       dist_bray_v <- distance(phy_v_a, method = "bray")
-       dist_jaccard_b <- distance(phy_b_a, method = "jaccard")
-       dist_jaccard_v <- distance(phy_v_a, method = "jaccard")
-       sample_df_b <- as(sample_data(phy_b_a), "data.frame") #Extraer metadatos
-       sample_df_v <- as(sample_data(phy_v_a), "data.frame") #Extraer metadatos
+       dist_bray_b <- distance(phy_b, method = "bray")
+       dist_bray_v <- distance(phy_v, method = "bray")
+       dist_jaccard_b <- distance(phy_b, method = "jaccard")
+       dist_jaccard_v <- distance(phy_v, method = "jaccard")
+       sample_df_b <- as(sample_data(phy_b), "data.frame") #Extraer metadatos
+       sample_df_v <- as(sample_data(phy_v), "data.frame") #Extraer metadatos
         
         #PERMANOVA
        permanova_b_res_location <- adonis2(dist_bray_b ~ Location, data = sample_df_b) #Permanova por localidad
@@ -671,11 +845,11 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
        permanova_b_res_longitude <- adonis2(dist_bray_b ~ Longitude, data = sample_df_b) #Permanova por longitud
        permanova_b_res_sex <- adonis2(dist_bray_b ~ Sex, data = sample_df_b) #Permanova por sexo
        
-       permanova_v_res_location <- adonis2(dist_bray_v ~ Location, data = sample_df) #Permanova por localidad
-       permanova_v_res_year <- adonis2(dist_bray_v ~ Year, data = sample_df) #Permanova por año
-       permanova_v_res_latitude <- adonis2(dist_bray_v ~ Latitude, data = sample_df) #Permanova por latitud
-       permanova_v_res_longitude <- adonis2(dist_bray_v ~ Longitude, data = sample_df) #Permanova por longitud
-       permanova_v_res_sex <- adonis2(dist_bray_v ~ Sex, data = sample_df) #Permanova por sexo
+       permanova_v_res_location <- adonis2(dist_bray_v ~ Location, data = sample_df_v) #Permanova por localidad
+       permanova_v_res_year <- adonis2(dist_bray_v ~ Year, data = sample_df_v) #Permanova por año
+       permanova_v_res_latitude <- adonis2(dist_bray_v ~ Latitude, data = sample_df_v) #Permanova por latitud
+       permanova_v_res_longitude <- adonis2(dist_bray_v ~ Longitude, data = sample_df_v) #Permanova por longitud
+       permanova_v_res_sex <- adonis2(dist_bray_v ~ Sex, data = sample_df_v) #Permanova por sexo
 
        permanova_b_res_location2 <- adonis2(dist_jaccard_b ~ Location, data = sample_df_b) #Permanova por localidad
        permanova_b_res_year2 <- adonis2(dist_jaccard_b ~ Year, data = sample_df_b) #Permanova por año
@@ -683,11 +857,11 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
        permanova_b_res_longitude2 <- adonis2(dist_jaccard_b ~ Longitude, data = sample_df_b) #Permanova por longitud
        permanova_b_res_sex2 <- adonis2(dist_jaccard_b ~ Sex, data = sample_df_b) #Permanova por sexo
        
-       permanova_v_res_location2 <- adonis2(dist_jaccard_v ~ Location, data = sample_df) #Permanova por localidad
-       permanova_v_res_year2 <- adonis2(dist_jaccard_v ~ Year, data = sample_df) #Permanova por año
-       permanova_v_res_latitude2 <- adonis2(dist_jaccard_v ~ Latitude, data = sample_df) #Permanova por latitud
-       permanova_v_res_longitude2 <- adonis2(dist_jaccard_v ~ Longitude, data = sample_df) #Permanova por longitud
-       permanova_v_res_sex2 <- adonis2(dist_jaccard_v ~ Sex, data = sample_df) #Permanova por sexo
+       permanova_v_res_location2 <- adonis2(dist_jaccard_v ~ Location, data = sample_df_v) #Permanova por localidad
+       permanova_v_res_year2 <- adonis2(dist_jaccard_v ~ Year, data = sample_df_v) #Permanova por año
+       permanova_v_res_latitude2 <- adonis2(dist_jaccard_v ~ Latitude, data = sample_df_v) #Permanova por latitud
+       permanova_v_res_longitude2 <- adonis2(dist_jaccard_v ~ Longitude, data = sample_df_v) #Permanova por longitud
+       permanova_v_res_sex2 <- adonis2(dist_jaccard_v ~ Sex, data = sample_df_v) #Permanova por sexo
        
         #visualización PERMANOVA (Bray)
          # Convertir resultados bacterias
@@ -712,7 +886,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
          
          permanova_tbl_bray <- bind_rows(permanova_tbl_b, permanova_tbl_v)
          # Usamos dplyr para dejar en blanco los valores repetidos de la columna Variable
-         permanova_tbl_bray <- permanova_bray %>%
+         permanova_tbl_bray <- permanova_tbl_bray %>%
            arrange(Grupo, Variable, Term) %>%
            mutate(Variable = if_else(duplicated(Variable) & duplicated(paste(Grupo, Variable)), "", Variable))
          Permanova_res_bray <-permanova_tbl_bray %>%
@@ -777,3 +951,245 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
   #Test estadístico PERMANOVA por variable de diversidad beta
   Permanova_res_bray
   Permanova_res_jaccard
+
+######## Gráficos definitivos ######
+  riqueza_b_location <- plot_richness(phy_b, x = "Location", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por localización") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  riqueza_b_year <- plot_richness(phy_b, x = "Year", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por año") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  riqueza_b_zona <- plot_richness(phy_b, x = "Zona", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por zona") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+
+  riqueza_b_sex <- plot_richness(phy_b, x = "Sex", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por sexo") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  riqueza_v_location <- plot_richness(phy_v, x = "Location", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por localización") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  riqueza_v_year <- plot_richness(phy_v, x = "Year", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por año") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  riqueza_v_zona <- plot_richness(phy_v, x = "Zona", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por zona") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+
+  riqueza_v_sex <- plot_richness(phy_v, x = "Sex", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por sexo") + 
+    geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
+    geom_boxplot(alpha = 0.6) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "grey", size = 0.5), 
+          plot.title = element_text(hjust = 0.5, size = 16, color = "black"),
+          axis.text.x = element_text(angle = 90))
+  ylab(label = "Índice alfa diversidad")
+  
+  dist_bj <- distance(phy_b, method = "jaccard")
+  dist_vj <- distance(phy_v, method = "jaccard")
+  ordination_bj <- ordinate(phy_b, method = "PCoA", distance = dist_bj)
+  ordination_vj <- ordinate(phy_b, method = "PCoA", distance = dist_vj)
+  
+  dist_bb <- distance(phy_b, method = "bray")
+  dist_vb <- distance(phy_v, method = "bray")
+  ordination_bb <- ordinate(phy_b, method = "PCoA", distance = dist_bb)
+  ordination_vb <- ordinate(phy_b, method = "PCoA", distance = dist_vb)
+  
+  
+  riqueza_b_jaccard_location <- plot_ordination(phy_b, ordination_bj, color = "Location") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Jaccard") + 
+    scale_color_manual(values =  paleta)
+
+  riqueza_b_jaccard_year <- plot_ordination(phy_b, ordination_bj, color = "Year") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Jaccard") + 
+    scale_color_gradient(low = "blue", high = "red")
+  
+  riqueza_b_jaccard_zona <- plot_ordination(phy_b, ordination_bj, color = "Zona") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Jaccard") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_b_jaccard_sex <- plot_ordination(phy_b, ordination_bj, color = "Sex") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Jaccard") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_b_bray_location <- plot_ordination(phy_b, ordination_bb, color = "Location") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_b_bray_year <- plot_ordination(phy_b, ordination_bb, color = "Year") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Bray-Curtis") + 
+    scale_color_gradient(low = "blue", high = "red")
+  
+  riqueza_b_bray_zona <- plot_ordination(phy_b, ordination_bb, color = "Zona") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_b_bray_sex <- plot_ordination(phy_b, ordination_bb, color = "Sex") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta bacteriana - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+  
+  ###
+  
+  riqueza_v_jaccard_location <- plot_ordination(phy_v, ordination_vj, color = "Location") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Jaccard") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_v_jaccard_year <- plot_ordination(phy_v, ordination_vj, color = "Year") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Jaccard") + 
+    scale_color_gradient(low = "blue", high = "red")
+  
+  riqueza_v_jaccard_zona <- plot_ordination(phy_v, ordination_vj, color = "Zona") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Jaccard") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_v_jaccard_sex <- plot_ordination(phy_v, ordination_vj, color = "Sex") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Jaccard") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_v_bray_location <- plot_ordination(phy_v, ordination_vb, color = "Location") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_v_bray_year <- plot_ordination(phy_v, ordination_vb, color = "Year") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Bray-Curtis") + 
+    scale_color_gradient(low = "blue", high = "red")
+  
+  riqueza_v_bray_zona <- plot_ordination(phy_v, ordination_vb, color = "Zona") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+  
+  riqueza_v_bray_sex <- plot_ordination(phy_v, ordination_vb, color = "Sex") +
+    geom_point(size = 3) +
+    theme_minimal() +
+    ggtitle("Diversidad beta vírica - Bray-Curtis") + 
+    scale_color_manual(values =  paleta)
+# ============================
+# RESULTADOS DEL SCRIPT
+# ============================
+
+### Análisis preliminar ###
+    sample_per_location #Histograma para conocer la distribución de muestras
+    gt_table            #Tabla con parámetros de los datos
+    
+### Composición del microbioma ###
+    plot_sector #Gráfico sectorial del número de lecturas bacteria y virus (No me convence)
+    plot_reads  #Gráfico composicional del número de lecturas bacterianas y vírica
+
+    bacteria_genera #Gráfico de los géneros
+    virus_genera    #Gráfico de los géneros
+    #¡¡¡ MIRAR QUÉ ES EL COLOR QUE FALTA Y ANOTAR LOS UNK_G!!!
+
+### Análisis de diversidad ###
+    Riqueza_bacteriana #Gráfico de diversidad alfa bacteriana general
+    Riqueza_viral      #Gráfico de diversidad alfa viral general
+
+    #Riqueza por variables (relevantes)
+    riqueza_b_location
+    riqueza_b_zona
+    riqueza_b_year
+    riqueza_b_sex
+    riqueza_v_location
+    riqueza_v_zona
+    riqueza_v_year
+    riqueza_v_sex
+    
+    riqueza_b_bray_location
+    riqueza_b_bray_zona
+    riqueza_b_bray_year
+    
+    riqueza_b_bray_zona
+    riqueza_b_jaccard_location
+    riqueza_b_jaccard_zona
+    riqueza_b_jaccard_year
+    riqueza_b_jaccard_sex
+    
+    riqueza_v_bray_location
+    riqueza_v_bray_zona
+    riqueza_v_bray_year
+    riqueza_v_bray_sex
+    riqueza_v_bray_zona
+    riqueza_v_jaccard_location
+    riqueza_v_jaccard_zona
+    riqueza_v_jaccard_year
+    riqueza_v_jaccard_sex
+    #Test estadísticos
+      #Kruskal wallis para alfa diversidad con dunn test para ver los grupos significativos
+      bacteria_alpha_kw
+      virus_alpha_kw
+
+      bacteria_dunn_res
+      virus_dunn_res
+      
+      #PERMANOVA para beta diversidad
+      Permanova_res_bray
+      Permanova_res_jaccard
