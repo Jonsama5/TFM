@@ -109,25 +109,10 @@ summarize_phyloseq(phy_g)
 summarize_phyloseq(phy_b)
 summarize_phyloseq(phy_v)
 #Rarefacción
-total = median(sample_sums(phy_g))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_g_a <- phy_g
-phy_g_a = transform_sample_counts(phy_g, standf)
+phy_g_a = transform_sample_counts(phy_g,function(x) 100* x/sum(x))
+phy_b_a = transform_sample_counts(phy_b,function(x) 100* x/sum(x))
+phy_v_a = transform_sample_counts(phy_v,function(x) 100* x/sum(x))
 
-total = median(sample_sums(phy_v))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_v_a <- phy_v
-phy_v_a = transform_sample_counts(phy_v, standf)
-
-total = median(sample_sums(phy_b))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_b_a <- phy_b
-phy_b_a = transform_sample_counts(phy_b, standf)
-
-total = median(sample_sums(phy_v))
-standf = function(x, t=total) round(t*(x/sum(x)))  
-phy_v_a <- phy_v
-phy_v_a = transform_sample_counts(phy_v, standf)
 #Número de muestras por punto de muestreo (para hacer el mapa, no voy a sobrecargarlo
 #con sitios que solo tienen 1, de cara a agruparlas por zonas)
 sample_per_location <- ggplot(SAMPLES, aes(x = Location)) +
@@ -376,7 +361,7 @@ wrap_plots(list_tsne, ncol = 2, nrow = 3)
 
 ################ MDS ################ 
 
-data.mds <-sapply(df[,9:length(df)], as.numeric)
+data.mds <-sapply(df[,10:length(df)], as.numeric)
 # Utilizamos la funcion dist para calcular la matriz de distancias euclideas
 # matriz NxN de distancias entre todos los puntos
 distances <- dist(data.mds, method = 'euclidean') #Con esto creamos la matriz de distancias necesaria para el cmdscale()
@@ -556,31 +541,34 @@ plotwatcher <- function(plotlist) {
 }
 
 # Función para seleccionar los N taxones más abundantes
-get_top_taxa <- function(physeq_object, top_n = 15) {
+get_top_taxa <- function(physeq_object, top_n) {
   taxa_sums_all <- taxa_sums(physeq_object)
   top_taxa <- names(sort(taxa_sums_all, decreasing = TRUE)[1:top_n])
   pruned_object <- prune_taxa(top_taxa, physeq_object)
   return(pruned_object)
 }
+phy_b_top <- get_top_taxa(phy_b_a, top_n = 50)
+phy_v_top <- get_top_taxa(phy_v_a, top_n = 50)
+
 #Objetos
   #Composición
 global_por_rango <- plot_bar_by_ranks(phy_g_a)
 bacteria_composition <- plot_bar_by_ranks(phy_b_a)
 virus_composition <- plot_bar_by_ranks(phy_v_a)
 
+bacteria_composition_top <- plot_bar_by_ranks(phy_b_top)
+virus_composition_top <- plot_bar_by_ranks(phy_v_top)
   #Visualizador
 Plot_sector
 plotwatcher(global_por_rango)
 plotwatcher(bacteria_composition)
 plotwatcher(virus_composition)
-
-  #Pruning
-phy_b_top15 <- get_top_taxa(phy_b, top_n = 100)
-phy_v_top15 <- get_top_taxa(phy_v, top_n = 30
+plotwatcher(bacteria_composition_top)
+plotwatcher(virus_composition_top)
 
 #Gráficos definitivos
   #Bacteria
-bacteria_genera <- plot_bar(phy_b_top15, fill = "Genus") +
+bacteria_genera <- plot_bar(phy_b_top, fill = "Genus") +
   labs(title = paste("Composición de la microbiota bacteriana por género")) +
   theme_minimal(base_size = 12) +
   labs(x = "Muestras", fill = "Género") +
@@ -594,9 +582,10 @@ bacteria_genera <- plot_bar(phy_b_top15, fill = "Genus") +
     panel.grid.minor = element_blank(),
     panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
   ) +
-  scale_y_continuous(limits = c(0, 100))  # Limita el eje Y hasta 100
+  scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+  scale_fill_manual(values = paleta)
   #Virus
-virus_genera <- plot_bar(phy_v_a, fill = "Genus") +
+virus_genera <- plot_bar(phy_v_top, fill = "Genus") +
   labs(title = paste("Composición de la microbiota vírica por género")) +
   theme_minimal(base_size = 12) +
   scale_fill_manual(values = paleta) +
@@ -613,18 +602,12 @@ virus_genera <- plot_bar(phy_v_a, fill = "Genus") +
   ) +
   scale_y_continuous(limits = c(0, 100))  # Limita el eje Y hasta 100
 
-#### Filtrar para mantener solo géneros conocidos (Esto debatirlo)
-phy_b_known <- subset_taxa(phy_b_a, Genus != "unk_g")
-phy_b_top <- prune_taxa(names(sort(taxa_sums(phy_b_a), decreasing = TRUE)[1:15]), phy_b_a)
-
-
 ################ RESULTADOS DEL APARTADO ################ 
 plotwatcher(global_por_rango)
 plotwatcher(bacteria_composition)
 plotwatcher(virus_composition)
-#Quedaría elegir gráfico definitivo, ver si lo hago con pruning (porque como está
-#Se visualiza bien), y solucionar los colores para fijarlos
-
+plotwatcher(bacteria_composition_top)
+plotwatcher(virus_composition_top)
 # ============================
 # ANÁLISIS DE DIVERSIDAD
 # ============================
@@ -971,7 +954,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
           axis.text.x = element_text(angle = 90))
   ylab(label = "Índice alfa diversidad")
   
-  riqueza_b_zona <- plot_richness(phy_b, x = "Zona", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por zona") + 
+  riqueza_b_zona <- plot_richness(phy_b, x = "Zone", measures = c("Shannon", "Simpson"), title = "Diversidad bacteriana por zona") + 
     geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
     geom_boxplot(alpha = 0.6) +
     theme_bw() +
@@ -1007,7 +990,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
           axis.text.x = element_text(angle = 90))
   ylab(label = "Índice alfa diversidad")
   
-  riqueza_v_zona <- plot_richness(phy_v, x = "Zona", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por zona") + 
+  riqueza_v_zona <- plot_richness(phy_v, x = "Zone", measures = c("Shannon", "Simpson"), title = "Diversidad vírica por zona") + 
     geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
     geom_boxplot(alpha = 0.6) +
     theme_bw() +
