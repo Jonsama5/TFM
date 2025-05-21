@@ -928,6 +928,78 @@ permanova_v_res_infected2 <- adonis2(dist_jaccard_v ~ Infected, data = sample_df
     tab_header(title = "Resultados de PERMANOVA (Jaccard)")
   
 # ============================
+# ANÁLISIS DEL PARÁSITO
+# ============================  
+#Metadata contiene las abundancias de parásito
+total_plas_reads <- sum(metadata$Plasmodium_abundance)  
+print(plas_csv) #Especies detectadas
+
+#Correlación entre taxones y abundancia del parásito
+
+#Correlación entre taxones y presencia/ausencia del parásito (hecho con DEseq2
+#en el apartado de análisis de abundancia diferencial por estado de infección)
+# -- CONFIGURACIÓN -- #
+phy <- phy_g  #objeto phyloseq
+variable_numerica <- "Infected"#variable dependiente
+
+#Preprocesado
+  #Extraer abundancias y metadatos
+otu <- as.data.frame(otu_table(phy))
+if (taxa_are_rows(phy)) otu <- t(otu)  #muestras como filas
+
+meta <- as.data.frame(sample_data(phy))
+
+#Verifica que la variable exista para evitar errores
+if (!(variable_numerica %in% colnames(meta))) {
+  stop(paste("La variable", variable_numerica, "no está en sample_data"))
+}
+
+#Extraer variable numérica
+num_var <- meta[[variable_numerica]]
+
+#Verifica que sea numérica para evitar errores
+if (!is.numeric(num_var)) {
+  stop(paste("La variable", variable_numerica, "no es numérica"))
+}
+
+#Obtener abundancias por fila normalizadas
+otu_rel <- otu / rowSums(otu)
+
+#Corelaciones
+cor_results <- apply(otu_rel, 2, function(x) {
+  suppressWarnings(cor.test(x, num_var, method = "spearman"))
+})
+
+#Ordenar resultados
+res_df <- data.frame(
+  OTU = names(cor_results),
+  Spearman_rho = sapply(cor_results, function(x) x$estimate),
+  p_value = sapply(cor_results, function(x) x$p.value),
+  stringsAsFactors = FALSE
+)
+
+res_df$padj <- p.adjust(res_df$p_value, method = "BH")
+
+#Añadir etiquetas taxonómicas
+if (!is.null(tax_table(phy))) {
+  tax <- as.data.frame(tax_table(phy))
+  res_df <- cbind(res_df, tax[match(res_df$OTU, rownames(tax)), ])
+}
+#Exportar y guardar como objeto
+write.csv(res_df, file = "correlacion_OTUs_sexo.csv", row.names = FALSE)
+correlacion_OTUs_vs_parasito <- read.csv("correlacion_OTUs_vs_parasito.csv")
+
+#Correlación entre variables y abundancia del parásito
+  #Variables cuantitativas
+correlacion_plas_vs_año <- cor.test(metadata$Plasmodium_abundance, metadata$Year, method = "spearman")
+  #Variables categóricas (K < 2)
+kruskal.test(Plasmodium_abundance ~ Zone, data = metadata)
+correlacion_plas_vs_zona <- pairwise.wilcox.test(metadata$Plasmodium_abundance, metadata$Zone, p.adjust.method = "fdr")
+
+kruskal.test(Plasmodium_abundance ~ Sex, data = metadata)
+correlacion_plas_vs_sexo <- pairwise.wilcox.test(metadata$Plasmodium_abundance, metadata$Sex, p.adjust.method = "fdr")
+
+# ============================
 # RESULTADOS DEL SCRIPT
 # ============================
 
@@ -1002,6 +1074,12 @@ virus_dunn_res
 Permanova_res_bray
 Permanova_res_jaccard
 
+#Análisis del parásito
+plas_csv #Datos para el nº de infectados y abundancia
+correlacion_OTUs_vs_parasito 
+correlacion_plas_vs_año
+correlacion_plas_vs_zona
+correlacion_plas_vs_sexo
 #Otros resultados 
   #Datos numéricos de las abundancias de los gráficos
   df_b_genus <- tax_df_b_top %>%
