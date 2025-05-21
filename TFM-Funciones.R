@@ -50,11 +50,11 @@ phy_statistics <- function(x) {
   # Devolver el tibble con las estadísticas globales
   return(stats_tibble)
 }
-
+  #USO: Obtener datos de distribución de los datos y métricas de diversidad de
+      #un objeto phyloseq
 #############                               #############
 ### FUNCIONES DE CREACIÓN Y VISUALIZACIÓN DE GRÁFICOS ### 
 #############                               #############
-
 #Creador de gráficos para cada rango taxonómico
 plot_bar_by_ranks <- function(physeq, paleta = NULL) {
   library(phyloseq)
@@ -86,6 +86,30 @@ plot_bar_by_ranks <- function(physeq, paleta = NULL) {
   
   return(plot_bar_list)
 }
+  #USO: Obtener una lista de gráficos composicionales de un objeto phyloseq en
+      #función del rango taxonómico para su visualización con plotwatcher()
+plot_bar_by_vars <- function(physeq, paleta = NULL) {
+  library(phyloseq)
+  library(ggplot2)
+  library(scales)
+  
+  #Lista donde se guardaron los gráficos generados
+  plot_bar_list <- list()
+  
+  #Iterar sobre cada rango taxonómico del objeto physeq
+  for (var in sample_variables(physeq)) {
+    #Creación del gráfico
+    plot_bar_list[[var]] <- plot_bar(physeq, fill = "Genus") +
+      facet_wrap(as.formula(paste("~", var)), scales = "free_x") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      ggtitle(paste0("Composición por Género agrupada por ", var)) +
+      scale_fill_manual(values = paleta)
+  }
+  
+  return(plot_bar_list)
+}
+  #USO: Obtener una lista de gráficos composicionales de un objeto phyloseq en
+      #función de las variables para su visualización con plotwatcher()
 paleta <-  c("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000",
              "#000080", "#800080", "#008080", "#C0C0C0", "#808080", "#FFA500", "#FFFF99", "#FFD700", "#FF69B4",
              "#87CEEB", "#FF6347", "#FF7F50", "#20B2AA", "#ADFF2F", "#7FFFD4", "#40E0D0", "#FF4500", "#DA70D6", "#FFDAB9",
@@ -105,7 +129,6 @@ paleta <-  c("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "
 paleta_genus <- c("#000000", "#A52A2A", "#FF69B4", "#6A5ACD", "#1E90FF", "#7B68EE", "#808080", "#FFD700", "#556B2F", 
                   "#00FA9A", "#FF8C00", "#DA70D6", "#F8F8FF", "#000080", "#DC143C", "#9932CC", "#2F4F4F", "#FF1493", 
                   "#B0C4DE", "#FFDAB9", "#ADFF2F")
-
 
 #Visualizador general de gráficos
 plotwatcher <- function(plotlist) {
@@ -148,7 +171,8 @@ plotwatcher <- function(plotlist) {
   }
   cat("Exiting the function.\n")
 }
-
+  #USO: Introduce el resultado de los creadores de gráficos para ver cada gráfico
+      #de la lista (opción 1), ver en conjunto (opción 2) y salir (opción 3)
 # Función para seleccionar los N taxones más abundantes
 get_top_taxa <- function(physeq_object, top_n) {
   taxa_sums_all <- taxa_sums(physeq_object)
@@ -156,7 +180,8 @@ get_top_taxa <- function(physeq_object, top_n) {
   pruned_object <- prune_taxa(top_taxa, physeq_object)
   return(pruned_object)
 }
-
+  #USO: Proporciona un objeto phyloseq y un número n de taxones para filtrar
+      #n taxones más abundantes
 #############                               #############
 ##############   FUNCIONES DE DIVERSIDAD   ############## 
 #############                               #############
@@ -183,8 +208,8 @@ plot_richness_by_variables <- function(physeq) {
   
   return(plot_bar_list)
 }
-
-#Test estadístico Kruskal Wallis
+  #USO: Obtener una lista de gráficos de diversidad alfa de un objeto phyloseq en
+      #función de las variables para su visualización con plotwatcher()
 kw_by_variables <- function(physeq) {
   df_alpha <- estimate_richness(physeq, measures = c("Shannon", "Simpson")) %>%
     cbind(sample_data(physeq))
@@ -212,7 +237,8 @@ kw_by_variables <- function(physeq) {
   
   bind_rows(results)
 } 
-
+  #USO: Realizar un test Kruskal-Wallis para la diversidad alfa de un objeto phyloseq
+      #en función de las variables
 #Test estadístico dunn posterior a Kruskall-Wallis
 dunn_by_variables <- function(physeq) {
   df_alpha <- estimate_richness(physeq, measures = c("Shannon", "Simpson")) %>%
@@ -224,10 +250,21 @@ dunn_by_variables <- function(physeq) {
     # Saltar variables con < 3 niveles únicos
     if (length(unique(df_alpha[[variable]])) < 3) next
     
+    # Convertir la variable a factor para evitar errores
+    df_alpha[[variable]] <- as.factor(df_alpha[[variable]])
+    
     for (index in c("Shannon", "Simpson")) {
       formula <- as.formula(paste(index, "~", variable))
       
-      dunn_res <- dunnTest(formula, data = df_alpha, method = "bh")
+      # Manejar errores con tryCatch
+      dunn_res <- tryCatch({
+        dunnTest(formula, data = df_alpha, method = "bh")
+      }, error = function(e) {
+        message(paste("Error con variable:", variable, "y índice:", index))
+        return(NULL)
+      })
+      
+      if (is.null(dunn_res)) next
       
       dunn_df <- dunn_res$res %>%
         mutate(
@@ -247,8 +284,9 @@ dunn_by_variables <- function(physeq) {
   }
   
   bind_rows(results)
-} 
-
+}
+  #USO: Realizar un test post hoc Dunn para la diversidad alfa de un objeto phyloseq
+      #en función de las variables tras aplicar "kw_by_variables"
 #Creador de gráficos de riqueza beta (Bray-Curtis y Jaccard) para cada rango taxonómico
 plot_bray_richness_by_variables <- function(physeq){
   plot_bar_list <- list()
@@ -286,5 +324,63 @@ plot_jaccard_richness_by_variables <- function(physeq){
   }
   return(plot_bar_list)
 } 
-              
-        
+  #USO: Obtener una lista de gráficos de diversidad beta de un objeto phyloseq en
+      #función de las variables para su visualización con plotwatcher()             
+#Creador de gráfico Deseq2 para el análisis diferencial de abundancias en función de variables
+create_MAplot_from_phy <- function(physeq, condition_var) {
+  library(DESeq2)
+  library(phyloseq)
+  library(ggplot2)
+  library(ggrepel)
+  # Asegurarse que la variable existe en el metadata
+  if (!(condition_var %in% colnames(sample_data(physeq)))) {
+    stop(paste("La variable", condition_var, "no está en los metadatos del phyloseq"))
+  }
+  
+  # Crear objeto DESeq2 desde physeq usando la variable de diseño
+  dds <- phyloseq_to_deseq2(physeq, as.formula(paste("~", condition_var)))
+  dds <- DESeq(dds)
+  res <- results(dds)
+  
+  # Preparar dataframe para MA plot
+  ma_data <- data.frame(
+    baseMean = res$baseMean,
+    log2FoldChange = res$log2FoldChange,
+    padj = res$padj,
+    OTU = rownames(res)
+  )
+  
+  # Extraer taxonomía para poder etiquetarla
+  tax <- as.data.frame(tax_table(physeq))
+  ma_data$Genus <- tax[match(ma_data$OTU, rownames(tax)), "Genus"]
+  
+  # Filtrar para etiquetas (padj < 0.05, abs(log2FC) > 1, baseMean > 10)
+  label_data <- subset(ma_data, padj < 0.05 & abs(log2FoldChange) > 1 & baseMean > 10)
+  label_data$Label <- ifelse(is.na(label_data$Genus), label_data$OTU, label_data$Genus)
+  
+  # Crear plot
+  plot <- ggplot(ma_data, aes(x = log10(baseMean + 1), y = log2FoldChange)) +
+    geom_point(aes(color = padj < 0.05), size = 3, alpha = 0.7) +
+    scale_color_manual(values = c("FALSE" = "gray70", "TRUE" = "red")) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "blue") +
+    geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "darkgray") +
+    geom_text_repel(data = label_data, aes(label = Label), size = 4, max.overlaps = 15) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      panel.grid.major = element_line(color = "gray80"),
+      panel.grid.minor = element_line(color = "gray90")
+    ) +
+    labs(
+      title = paste("MA Plot -", condition_var),
+      x = "Log10(baseMean + 1)",
+      y = paste("Log2 Fold Change (by", condition_var, ")"),
+      color = "Significativo (padj < 0.05)"
+    )
+  
+  return(plot)
+}
+  #USO: Obtener un gráfico de abundancia diferencial de un objeto phyloseq proporcionado
+      #en función de la variable dependiente (categórica) proporcionada
