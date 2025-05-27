@@ -110,7 +110,7 @@ plot_bar_by_vars <- function(physeq, paleta = NULL) {
 }
   #USO: Obtener una lista de gráficos composicionales de un objeto phyloseq en
       #función de las variables para su visualización con plotwatcher()
-paleta <-  c("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000",
+paleta <-  c("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#", "#FF00FF", "#00FFFF", "#800000", "#008000",
              "#000080", "#800080", "#008080", "#C0C0C0", "#808080", "#FFA500", "#FFFF99", "#FFD700", "#FF69B4",
              "#87CEEB", "#FF6347", "#FF7F50", "#20B2AA", "#ADFF2F", "#7FFFD4", "#40E0D0", "#FF4500", "#DA70D6", "#FFDAB9",
              "#DB7093", "#FFDEAD", "#00FA9A", "#B0E0E6", "#FFC0CB", "#E6E6FA", "#00FF7F", "#4682B4", "#F08080", "#DAA520",
@@ -327,7 +327,7 @@ plot_jaccard_richness_by_variables <- function(physeq){
   #USO: Obtener una lista de gráficos de diversidad beta de un objeto phyloseq en
       #función de las variables para su visualización con plotwatcher()             
 #Creador de gráfico Deseq2 para el análisis diferencial de abundancias en función de variables
-create_MAplot_from_phy <- function(physeq, condition_var) {
+create_MAplot_from_phy <- function(physeq, condition_var, title = NULL) {
   library(DESeq2)
   library(phyloseq)
   library(ggplot2)
@@ -336,7 +336,10 @@ create_MAplot_from_phy <- function(physeq, condition_var) {
   if (!(condition_var %in% colnames(sample_data(physeq)))) {
     stop(paste("La variable", condition_var, "no está en los metadatos del phyloseq"))
   }
-  
+  # Guardar la variable título si necesario
+  if (is.null(title)) {
+    title = condition_var
+  }
   # Crear objeto DESeq2 desde physeq usando la variable de diseño
   dds <- phyloseq_to_deseq2(physeq, as.formula(paste("~", condition_var)))
   dds <- DESeq(dds)
@@ -354,9 +357,10 @@ create_MAplot_from_phy <- function(physeq, condition_var) {
   tax <- as.data.frame(tax_table(physeq))
   ma_data$Genus <- tax[match(ma_data$OTU, rownames(tax)), "Genus"]
   
-  # Filtrar para etiquetas (padj < 0.05, abs(log2FC) > 1, baseMean > 10)
-  label_data <- subset(ma_data, padj < 0.05 & abs(log2FoldChange) > 1 & baseMean > 10)
+  # Filtrar para etiquetas (padj < 0.05) y valores inválidos
+  label_data <- subset(ma_data, padj < 0.05)
   label_data$Label <- ifelse(is.na(label_data$Genus), label_data$OTU, label_data$Genus)
+  ma_data <- subset(ma_data, is.finite(baseMean) & is.finite(log2FoldChange) & !is.na(padj))
   
   # Crear plot
   plot <- ggplot(ma_data, aes(x = log10(baseMean + 1), y = log2FoldChange)) +
@@ -364,22 +368,25 @@ create_MAplot_from_phy <- function(physeq, condition_var) {
     scale_color_manual(values = c("FALSE" = "gray70", "TRUE" = "red")) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "blue") +
     geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "darkgray") +
-    geom_text_repel(data = label_data, aes(label = Label), size = 4, max.overlaps = 15) +
+    geom_text_repel(data = label_data, aes(label = Label), size = 4, max.overlaps = 20) +
     theme_minimal() +
     theme(
-      plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-      axis.title = element_text(size = 14),
-      axis.text = element_text(size = 12),
-      panel.grid.major = element_line(color = "gray80"),
-      panel.grid.minor = element_line(color = "gray90")
+      plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+      axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 9),
+      axis.text.y = element_text(size = 8), 
+      axis.title.y.left = element_text(size = 13, face = "bold"),
+      legend.title = element_text(size = 13, face = "bold"),
+      legend.text = element_text(size = 14), 
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(), 
+      panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
     ) +
     labs(
-      title = paste("MA Plot -", condition_var),
-      x = "Log10(baseMean + 1)",
-      y = paste("Log2 Fold Change (by", condition_var, ")"),
+      title = title,
+      x = "Log10(Abundancia promedio + 1)",
+      y = paste("Cambio en Log2 (por", condition_var, ")"),
       color = "Significativo (padj < 0.05)"
     )
-  
   return(plot)
 }
   #USO: Obtener un gráfico de abundancia diferencial de un objeto phyloseq proporcionado
