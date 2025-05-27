@@ -10,6 +10,7 @@ library(vegan) #Microbiome package; used for PERMANOVA
 library(FSA) #dunn test
 library(gt) #Plot tibbles
 library(tidyr)
+library(ggpubr) #Arrange plots
 source("TFM-Funciones.R")
 
 # ============================
@@ -207,7 +208,7 @@ final_statistics_wide <- final_statistics %>%
   pivot_wider(names_from = Type, values_from = Value)
 
 # Crear la tabla con gt sin anotación científica
-gt_table <- final_statistics_wide %>%
+Microbiome_data_summary <- final_statistics_wide %>%
   gt() %>%
   tab_header(
     title = "Resumen de Estadísticos"
@@ -224,30 +225,12 @@ gt_table <- final_statistics_wide %>%
   fmt_number(decimals = 2)
 
 # Mostrar la tabla
-gt_table
+Microbiome_data_summary
 
 # ============================
 # ANÁLISIS COMPOSICIONAL
 # ============================
 
-#Proporción de lecturas por reino
-plot_reads <- plot_bar(phy_g_a, fill = "Superkingdom") +
-  labs(
-    title = "Abundancia relativa total por Reino",
-    x = "Muestras",
-    y = "Abundancia relativa"
-  ) +
-  scale_fill_brewer(palette = "Set2", name = "Dominio") +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
-    axis.text.y = element_text(size = 10),
-    legend.title = element_text(size = 11, face = "bold"),
-    legend.text = element_text(size = 10),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor = element_blank()
-  )
 #Filtrar por los 50 taxones más abundantes
 phy_b_top <- get_top_taxa(phy_b_a, top_n = 50)
 phy_v_top <- get_top_taxa(phy_v_a, top_n = 50)
@@ -260,17 +243,36 @@ virus_composition <- plot_bar_by_ranks(phy_v_a)
 bacteria_composition_top <- plot_bar_by_ranks(phy_b_top)
 virus_composition_top <- plot_bar_by_ranks(phy_v_top)
 
+#Proporción de lecturas por reino
+plot_reads <- plot_bar(phy_g_a, fill = "Superkingdom") +
+  labs(title = paste("A")) +
+  theme_minimal(base_size = 12) +
+  labs(x = element_blank(), fill = "Género", y = "Porcentaje de lecturas total") +
+  theme(
+    plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+    axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+    axis.text.y = element_text(size = 8),
+    axis.title.y.left = element_text(size = 13, face = "bold"),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 14),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
+  ) +
+  scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+  scale_fill_manual(values = c("#8A2BE2","#FFFF00", "#FF0000"))
   #Composición a nivel de género
  bacteria_genera <- plot_bar(phy_b_top, fill = "Genus") +
-  labs(title = paste("Composición de la microbiota bacteriana por género")) +
+  labs(title = paste("B")) +
   theme_minimal(base_size = 12) +
-  labs(x = "Muestras", fill = "Género") +
+  labs(x = element_blank(), fill = "Género", y = "Abundancia relativa bacteriana") +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
-    axis.text.y = element_text(size = 10),
-    legend.title = element_text(size = 11, face = "bold"),
-    legend.text = element_text(size = 10),
+    plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+    axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+    axis.text.y = element_text(size = 8),
+    axis.title.y.left = element_text(size = 13, face = "bold"),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 14),
     panel.grid.major.x = element_blank(),
     panel.grid.minor = element_blank(),
     panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
@@ -279,23 +281,30 @@ virus_composition_top <- plot_bar_by_ranks(phy_v_top)
   scale_fill_manual(values = paleta_genus)
 
   #Virus
-  virus_genera <- plot_bar(phy_v_top, fill = "Genus") +
-    labs(title = paste("Composición de la microbiota vírica por género")) +
+  virus_genera <- plot_bar(phy_v_top, fill = "Genus")  +
+    labs(title = paste("C")) +
     theme_minimal(base_size = 12) +
-    scale_fill_manual(values = paleta_genus) +
-    labs(x = "Muestras", fill = "Género") +
+    labs(x = element_blank(), fill = "Género", y = "Abundancia relativa vírica") +
     theme(
-      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
-      axis.text.y = element_text(size = 10),
-      legend.title = element_text(size = 11, face = "bold"),
-      legend.text = element_text(size = 10),
+      plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+      axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+      axis.text.y = element_text(size = 8), 
+      axis.title.y.left = element_text(size = 13, face = "bold"),
+      legend.title = element_text(size = 13, face = "bold"),
+      legend.text = element_text(size = 14),
       panel.grid.major.x = element_blank(),
-      panel.grid.minor = element_blank(),
+      panel.grid.minor = element_blank(), 
       panel.grid.major.y = element_line(color = "grey", size = 0.5)  # Añade la cuadrícula para el eje Y
     ) +
-    scale_y_continuous(limits = c(0, 100))  # Limita el eje Y hasta 100
+    scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+    scale_fill_manual(values = paleta_genus)
 
+Composition_plots <-  ggarrange(plot_reads, bacteria_genera, virus_genera, 
+            ncol = 1, 
+            nrow = 3, 
+            align = "v")
+  
+  
 tax_df_b_top <- as.data.frame(tax_table(phy_b_top))
 otu_sums_b_top <- taxa_sums(phy_b_top)
 tax_df_b_top$Abundances <- otu_sums_b_top
@@ -316,11 +325,13 @@ write.csv(tax_df_v_top, file = "Abundancias de los 50 taxones víricos más abun
   virus_by_vars <- plot_bar_by_vars(phy_v_top, paleta)
 
   #Análisis de abundancia diferencial en función de variables
-  AD_infected <- create_MAplot_from_physeq(phy_g, "Infected")
+  AD_infected <- create_MAplot_from_phy(phy_g, "Infected")
   phy_g <- subset_samples(phy_g, !is.na(Zone))
-  AD_zone <- create_MAplot_from_physeq(phy_g, "Zone")
-  AD_sex <- create_MAplot_from_physeq(phy_g, "Sex")
+  AD_zone <- create_MAplot_from_phy(phy_g, "Zone")
+  AD_sex <- create_MAplot_from_phy(phy_g, "Sex")
 
+MA_plots <-  ggarrange(AD_infected, AD_zone, AD_sex, legend = "right",common.legend = TRUE, align = "v", ncol = 1, nrow = 3)
+  
 #Visualizador
 plotwatcher(global_por_rango)
 plotwatcher(bacteria_composition)
@@ -1005,17 +1016,12 @@ correlacion_plas_vs_sexo <- pairwise.wilcox.test(metadata$Plasmodium_abundance, 
 
 ### Análisis preliminar ###
 sample_per_location #Histograma para conocer la distribución de muestras
-gt_table            #Tabla con parámetros de los datos
+Microbiome_data_summary #Tabla con parámetros de los datos
 
 ### Composición del microbioma ###
-plot_reads  #Gráfico composicional del número de lecturas bacterianas y vírica
+Composition_figure #Lecturas por reino + 50 géneros más abundantes de bacteria y virus
 
-bacteria_genera #Gráfico de los géneros
-virus_genera    #Gráfico de los géneros
-
-AD_infected #Taxones diferencialmente abundantes entre estados de infección
-AD_zone #Taxones diferencialmente abundantes entre zonas (Revisar)
-AD_sex #Taxones diferencialmente abundantes entre sexos
+MA_plots #Taxones difernecialmente abundantes entre variables categóricas
 
 ### Análisis de diversidad ###
 Riqueza_general
