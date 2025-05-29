@@ -4,14 +4,13 @@ library(dplyr)
 library(tibble)
 library(microbiome) #Microbiome package
 library(phyloseq) #Main microbiome package
-library(Rtsne) #t-sne package
 library(vegan) #Microbiome package; used for PERMANOVA
 library(FSA) #dunn test
 library(gt) #Plot tibbles
 library(tidyr)
 library(ggpubr) #Arrange plots
+library(mvabund) #Testar composición
 source("TFM-Funciones.R")
-setwd("C:/Users/jonco/Desktop/Bioinformática/UNIR - 2º Cuatrimestre/TFM/Datos")
 # ============================
 # PREPROCESAMIENTO
 # ============================
@@ -21,19 +20,24 @@ virus_csv <- read.csv("VIRUSES_SPP_TABLE.csv")
 plas_csv <- read.csv("plasmodio_SPP_table.csv")
 metadata <- read.csv("Muestras mosquito Cameroon - R metadata.csv")
 metadata[,1] <- sub("-.*", "", metadata[,1])
+
 #Hay que hacer arreglos porque hay un par de duplicados. Además, separo otu y taxa.
+
 #Arreglo y separo en bacterias
 colnames(bacteria_csv) <- sub("\\..*", "", colnames(bacteria_csv))
 bacteria_csv <- subset(bacteria_csv, select = -AN0007)
 bacteria_csv <- subset(bacteria_csv, select = -AN0425.1)
+
 bacteria_otu <- bacteria_csv[,1:221]
 bacteria_tax <- bacteria_csv[,222:length(bacteria_csv)]
 bacteria_tax$Genus[is.na(bacteria_tax$Genus) | bacteria_tax$Genus == ""] <- "Unidentified genus"
 bacteria_tax$Genus[grepl("^unk_", bacteria_tax$Genus)] <- "Unclassified"
+
 #Arreglo y separo en virus
 colnames(virus_csv) <- sub("\\..*", "", colnames(virus_csv))
 virus_csv <- subset(virus_csv, select = -AN0007)
 virus_csv <- subset(virus_csv, select = -AN0425.1)
+
 virus_otu <- virus_csv[,1:221]
 virus_tax <- virus_csv[,222:length(virus_csv)]
 virus_tax$Genus[is.na(virus_tax$Genus) | virus_tax$Genus == ""] <- "Unidentified genus"
@@ -43,6 +47,7 @@ colnames(plas_csv)[1:223] <- sub("\\..*", "", colnames(plas_csv)[1:223])
 colnames(plas_csv)[colnames(plas_csv) == "AN007"] <- "AN0070"
 plas_csv <- subset(plas_csv, select = -AN0070)
 plas_csv <- subset(plas_csv, select = -AN0455)
+
 plas_otu <- plas_csv[,1:221]
 plas_tax <- plas_csv[,222:length(plas_csv)]
 #Voy a crear un dataset global
@@ -51,6 +56,7 @@ global_otu <- global_csv[,1:221]
 global_tax <- global_csv[,222:length(global_csv)]
 global_tax$Genus[is.na(global_tax$Genus) | global_tax$Genus == ""] <- "Unidentified genus"
 global_tax$Genus[grepl("^unk_", global_tax$Genus)] <- "Unclassified"
+
 # ============================
 #     PREPARACIÓN PHYLOSEQ
 # ============================
@@ -95,6 +101,7 @@ metadata <- metadata %>%
 
 samples <- metadata
 samples <- samples %>% tibble::column_to_rownames("Sample.ID")
+
 # ============================
 #          PHYLOSEQ
 # ============================  
@@ -102,22 +109,30 @@ samples <- samples %>% tibble::column_to_rownames("Sample.ID")
 bacteria_OTU <- otu_table(bacteria_otu, taxa_are_rows = TRUE)
 bacteria_taxa <- as.matrix(bacteria_tax)
 bacteria_TAX <- tax_table(bacteria_taxa)
+
 SAMPLES <- sample_data(samples)
+
 phy_b <- phyloseq(bacteria_OTU, bacteria_TAX, SAMPLES)
+
 #Virus
 virus_OTU <- otu_table(virus_otu, taxa_are_rows = TRUE)
 virus_taxa <- as.matrix(virus_tax)
 virus_TAX <- tax_table(virus_taxa)
+
 phy_v <- phyloseq(virus_OTU, virus_TAX, SAMPLES)
+
 #Plasmodio
 plas_OTU <- otu_table(plas_otu, taxa_are_rows = TRUE)
 plas_taxa <- as.matrix(plas_tax)
 plas_TAX <- tax_table(plas_taxa)
+
 phy_p <- phyloseq(plas_OTU, plas_TAX, SAMPLES)
+
 #Global
 global_OTU <- otu_table(global_otu, taxa_are_rows = TRUE)
 global_taxa <- as.matrix(global_tax)
 global_TAX <- tax_table(global_taxa)
+
 phy_g <- phyloseq(global_OTU, global_TAX, SAMPLES)
 # ============================
 #    ANÁLISIS PRELIMINAR
@@ -196,11 +211,12 @@ Resumen_general_microbioma_tbl
 #Filtrar por los 50 taxones más abundantes
 phy_b_top <- get_top_taxa(phy_b_a, top_n = 50)
 phy_v_top <- get_top_taxa(phy_v_a, top_n = 50)
+phy_g_top <- get_top_taxa(phy_g_a, top_n = 50)
 #Proporción de lecturas por reino
 plot_reads <- plot_bar(phy_g_a, fill = "Superkingdom") +
   labs(title = paste("A")) +
   theme_minimal(base_size = 12) +
-  labs(x = element_blank(), fill = "Género", y = "Porcentaje de lecturas total") +
+  labs(x = element_blank(), fill = "Reino", y = "Porcentaje de lecturas total") +
   theme(
     plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
     axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
@@ -254,6 +270,80 @@ Composición_fg <-  ggarrange(plot_reads, bacteria_genera, virus_genera,
                                 ncol = 1, 
                                 nrow = 3, 
                                 align = "v")
+#Composición por variables
+Composition_genera_by_sex <- plot_bar(phy_g_top, fill = "Genus") +
+  facet_wrap(~ Sex, scales = "free_x") +
+  labs(title = paste("A")) +
+  theme_minimal(base_size = 12) +
+  labs(x = element_blank(), fill = "Género", y = "Abundancia relativa total") +
+  theme(
+    plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+    axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+    axis.text.y = element_text(size = 8),
+    axis.title.y.left = element_text(size = 13, face = "bold"),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 11),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5),# Añade la cuadrícula para el eje Y
+    strip.text = element_text(size = 14)
+  ) +
+  scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+  scale_fill_manual(values = paleta_genus)
+Composition_genera_by_zone <- plot_bar(phy_g_top, fill = "Genus") +
+  facet_wrap(~ Zone, scales = "free_x") +
+  labs(title = paste("B")) +
+  theme_minimal(base_size = 12) +
+  labs(x = element_blank(), fill = "Género", y = "Abundancia relativa total") +
+  theme(
+    plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+    axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+    axis.text.y = element_text(size = 8),
+    axis.title.y.left = element_text(size = 13, face = "bold"),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 1),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5),# Añade la cuadrícula para el eje Y
+    strip.text = element_text(size = 14)
+  ) +
+  scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+  scale_fill_manual(values = paleta_genus)
+Composition_genera_by_infection <- plot_bar(phy_g_top, fill = "Genus") +
+  facet_wrap(~ Infected, scales = "free_x") + 
+  labs(title = paste("B")) +
+  theme_minimal(base_size = 12) +
+  labs(x = element_blank(), fill = "Género", y = "Abundancia relativa total") +
+  theme(
+    plot.title = element_text(hjust = 0, size = 17, face = "bold"), 
+    axis.text.x = element_text(angle = 70, vjust = 1, hjust = 0.5, size = 6),
+    axis.text.y = element_text(size = 8),
+    axis.title.y.left = element_text(size = 13, face = "bold"),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 1), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey", size = 0.5),# Añade la cuadrícula para el eje Y
+    strip.text = element_text(size = 14)
+  ) +
+  scale_y_continuous(limits = c(0, 100)) +  # Limita el eje Y hasta 100
+  scale_fill_manual(values = paleta_genus)
+Composición_vars_fg <- ggarrange(Composition_genera_by_sex, Composition_genera_by_zone, Composition_genera_by_infection, 
+                                 nrow = 3, common.legend = TRUE, legend = "right", heights = c(1,1.5,1) )
+  #Tests
+#Testar si existen diferencias en la composición
+otu_table_phy_g_top <- as(otu_table(phy_g_top), "matrix")
+otu_table_phy_g_top <- t(otu_table_phy_g_top)  # necesita muestras en filas
+meta_phy_g_top <- as(sample_data(phy_g_top), "data.frame")
+vars <- list("Sex", "Zone", "Infected")
+fit_list <- list()
+anova_list <- list()
+for (var in vars) {
+  formula <- as.formula(paste0("otu_table_phy_g_top ~ meta_phy_g_top[['", var, "']]"))
+  fit_list[[var]] <- manyglm(formula, family = "negative.binomial")
+  anova_list[[var]] <- anova(fit_list[[var]], test = "LR")
+}
+print(anova_list) #Se confirma que existen diferencias significativas entre estas variables
 #Análisis de abundancia diferencial en función de variables
 AD_infected <- create_MAplot_from_phy(phy_g, "Infected", title = "A")
 phy_g <- subset_samples(phy_g, !is.na(Zone))
@@ -271,6 +361,7 @@ Riqueza_general <- plot_richness(phy_g, x = "Country", measures = c("Shannon", "
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0, size = 17, face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Índice alfa diversidad")
@@ -280,7 +371,8 @@ Riqueza_bacteriana <- plot_richness(phy_b, x = "Country", measures = c("Shannon"
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0, size = 17, face = "bold"),
-        axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"),
+        axis.text.x = element_blank(), 
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Índice alfa diversidad")
 Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Simpson"), title = "C") + 
@@ -289,6 +381,7 @@ Riqueza_viral <- plot_richness(phy_v, x = "Country", measures = c("Shannon", "Si
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0, size = 17, face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Índice alfa diversidad")
@@ -304,6 +397,7 @@ Riqueza_general_sex <- plot_richness(phy_g_filtrado, x = "Country", measures = c
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon")
@@ -314,6 +408,7 @@ Riqueza_general_zone <- plot_richness(phy_g_filtrado, x = "Country", measures = 
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon")
@@ -324,6 +419,7 @@ Riqueza_general_infected <- plot_richness(phy_g, x = "Country", measures = c("Sh
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon")
@@ -335,6 +431,7 @@ Riqueza_general_sex <- plot_richness(phy_g_filtrado, x = "Country", measures = c
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson")
@@ -345,6 +442,7 @@ Riqueza_general_zone <- plot_richness(phy_g_filtrado, x = "Country", measures = 
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson")
@@ -355,6 +453,7 @@ Riqueza_general_infected <- plot_richness(phy_g, x = "Country", measures = c("Si
   theme_bw() +
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.text.x = element_blank(),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson")
@@ -369,7 +468,7 @@ Riqueza_bacteriana_sex <- plot_richness(phy_b_filtrado, x = "Country", measures 
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Bacteria)")
 Riqueza_bacteriana_zone <- plot_richness(phy_b_filtrado, x = "Country", measures = c("Shannon"), title = "Zona") + 
@@ -380,7 +479,7 @@ Riqueza_bacteriana_zone <- plot_richness(phy_b_filtrado, x = "Country", measures
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Bacteria)")
 Riqueza_bacteriana_infected <- plot_richness(phy_b, x = "Country", measures = c("Shannon"), title = "Estado de infección") + 
@@ -391,7 +490,7 @@ Riqueza_bacteriana_infected <- plot_richness(phy_b, x = "Country", measures = c(
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Bacteria)")
 Riqueza_bacteriana_variables_SH <- ggarrange(Riqueza_bacteriana_sex, Riqueza_bacteriana_zone, Riqueza_bacteriana_infected, ncol = 3)
@@ -403,7 +502,7 @@ Riqueza_bacteriana_sex <- plot_richness(phy_b_filtrado, x = "Country", measures 
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson (Bacteria)")
 Riqueza_bacteriana_zone <- plot_richness(phy_b_filtrado, x = "Country", measures = c("Simpson")) + 
@@ -414,9 +513,9 @@ Riqueza_bacteriana_zone <- plot_richness(phy_b_filtrado, x = "Country", measures
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
-  ylab(label = "Simpson (Bacteria)")
+    ylab(label = "Simpson (Bacteria)") 
 Riqueza_bacteriana_infected <- plot_richness(phy_b, x = "Country", measures = c("Simpson")) + 
   geom_jitter(width = 0.2, alpha = 0.6, size = 2) +
   geom_boxplot(alpha = 0.6) +
@@ -425,7 +524,7 @@ Riqueza_bacteriana_infected <- plot_richness(phy_b, x = "Country", measures = c(
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson (Bacteria)")
 Riqueza_bacteriana_variables_SS <- ggarrange(Riqueza_bacteriana_sex, Riqueza_bacteriana_zone, Riqueza_bacteriana_infected, ncol=3)
@@ -439,7 +538,7 @@ Riqueza_viral_sex <- plot_richness(phy_v_filtrado, x = "Country", measures = c("
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Virus)")
 Riqueza_viral_zone <- plot_richness(phy_v_filtrado, x = "Country", measures = c("Shannon")) + 
@@ -450,7 +549,7 @@ Riqueza_viral_zone <- plot_richness(phy_v_filtrado, x = "Country", measures = c(
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Virus)")
 Riqueza_viral_infected <- plot_richness(phy_v, x = "Country", measures = c("Shannon")) + 
@@ -461,7 +560,7 @@ Riqueza_viral_infected <- plot_richness(phy_v, x = "Country", measures = c("Shan
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Shannon (Virus)")
 Riqueza_viral_variables_SH <- ggarrange(Riqueza_viral_sex, Riqueza_viral_zone, Riqueza_viral_infected, ncol=3)
@@ -473,7 +572,7 @@ Riqueza_viral_sex <- plot_richness(phy_v_filtrado, x = "Country", measures = c("
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson (Virus)")
 Riqueza_viral_zone <- plot_richness(phy_v_filtrado, x = "Country", measures = c("Simpson")) + 
@@ -484,7 +583,7 @@ Riqueza_viral_zone <- plot_richness(phy_v_filtrado, x = "Country", measures = c(
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(),
-        axis.title.y = element_text(size = 15), 
+        axis.title.y = element_text(size = 15, face = "bold"), 
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson (Virus)")
 Riqueza_viral_infected <- plot_richness(phy_v, x = "Country", measures = c("Simpson")) + 
@@ -495,7 +594,7 @@ Riqueza_viral_infected <- plot_richness(phy_v, x = "Country", measures = c("Simp
   theme(panel.grid = element_line(color = "grey", size = 0.5), 
         plot.title = element_text(hjust = 0.5, size = 16, color = "black", face = "bold"),
         axis.text.x = element_blank(), 
-        axis.title.y = element_text(size = 15),
+        axis.title.y = element_text(size = 15, face = "bold"),
         axis.title.x.bottom =  element_blank()) +
   ylab(label = "Simpson (Virus)")
 Riqueza_viral_variables_SS <- ggarrange(Riqueza_viral_sex, Riqueza_viral_zone, Riqueza_viral_infected, ncol=3)
@@ -541,27 +640,35 @@ ordination_vb <- ordinate(phy_b, method = "PCoA", distance = dist_vb)
 Riqueza_bacteriana_jaccard <- plot_ordination(phy_b, ordination_bj) +
   geom_point(size = 3) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold")) +
+  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold"),
+        axis.title.y.left = element_text(size = 13, face = "bold"), 
+        axis.title.x.bottom = element_text(size = 13, face = "bold" )) +
   ggtitle("B") + 
   scale_color_manual(values =  paleta)
 Riqueza_bacteriana_bray <- plot_ordination(phy_b, ordination_bb) +
   geom_point(size = 3) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold")) +
+  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold"),
+        axis.title.y.left = element_text(size = 13, face = "bold"), 
+        axis.title.x.bottom = element_text(size = 13, face = "bold" )) +
   ggtitle("A") + 
   scale_color_manual(values =  paleta)
 Riqueza_viral_jaccard <- plot_ordination(phy_v, ordination_vj) +
   geom_point(size = 3) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold")) +
-  ggtitle("D") + 
+  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold"),
+        axis.title.y.left = element_text(size = 13, face = "bold"), 
+        axis.title.x.bottom = element_text(size = 13, face = "bold" )) +
+  ggtitle("B") + 
   scale_color_manual(values =  paleta)
 Riqueza_viral_bray <- plot_ordination(phy_v, ordination_vb) +
   geom_point(size = 3) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold")) +
+  theme(plot.title = element_text(hjust = 0, size = 16, color = "black", face = "bold"),
+        axis.title.y.left = element_text(size = 13, face = "bold"), 
+        axis.title.x.bottom = element_text(size = 13, face = "bold" )) +
   ggtitle("C") + 
-  scale_color_manual(values =  paleta)
+  scale_color_manual(values =  paleta) 
 Beta_diversity_fg <- ggarrange(Riqueza_bacteriana_bray, Riqueza_bacteriana_jaccard, Riqueza_viral_bray, Riqueza_viral_jaccard, ncol=2, nrow = 2)
 #Test estadístico PERMANOVA para analizar qué variables producen efectos significativos sobre la diversidad
 #Preparación (matriz de distancias y metadatos)
@@ -746,6 +853,7 @@ Muestra_por_localidad
 Resumen_general_microbioma_tbl
 ############ Composición ############ 
 Composición_fg
+Composicion_vars_tbl
 MA_fg
 ############ Diversidad ############ 
 Riqueza_alfa_general_fg
