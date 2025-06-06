@@ -10,7 +10,9 @@ library(gt) #Plot tibbles
 library(tidyr)
 library(ggpubr) #Arrange plots
 library(mvabund) #Testar composición
+setwd("C:/Users/jonco/Desktop/Bioinformática/UNIR - 2º Cuatrimestre/TFM/Datos")
 source("TFM-Funciones.R")
+
 # ============================
 # PREPROCESAMIENTO
 # ============================
@@ -349,7 +351,6 @@ AD_infected <- create_MAplot_from_phy(phy_g, "Infected", title = "A")
 phy_g <- subset_samples(phy_g, !is.na(Zone))
 AD_zone <- create_MAplot_from_phy(phy_g, "Zone", title = "B")
 AD_sex <- create_MAplot_from_phy(phy_g, "Sex", title = "C")
-
 MA_fg <-  ggarrange(AD_infected, AD_zone, AD_sex, legend = "right",common.legend = TRUE, align = "v", ncol = 1, nrow = 3)
 # ============================
 # ANÁLISIS DE DIVERSIDAD
@@ -803,7 +804,7 @@ Permanova_res_jaccard_tbl <- permanova_tbl_clean2 %>%
 # ============================  
 total_plas_reads <- sum(metadata$Plasmodium_abundance)  
 # Extraer abundancias y metadatos
-otu <- as.data.frame(otu_table(phy))
+otu <- as.data.frame(otu_table(phy_g))
 if (taxa_are_rows(phy)) otu <- t(otu)  # muestras como filas
 meta <- as.data.frame(sample_data(phy_g))
 # Verifica que la variable exista
@@ -846,6 +847,9 @@ kruskal.test(Plasmodium_abundance ~ Zone, data = metadata)
 correlacion_plas_vs_zona <- pairwise.wilcox.test(metadata$Plasmodium_abundance, metadata$Zone, p.adjust.method = "fdr")
 kruskal.test(Plasmodium_abundance ~ Sex, data = metadata)
 correlacion_plas_vs_sexo <- pairwise.wilcox.test(metadata$Plasmodium_abundance, metadata$Sex, p.adjust.method = "fdr")
+  #Interacción entre variables
+modelo_interaccion <- glm(Infected ~ Sex , data = metadata, family = binomial)
+modelo_interaccion <- summary(modelo_interaccion)
 # ==========
 # RESULTADOS
 # ==========
@@ -869,3 +873,4 @@ plasmodium_vs_otu_correlation_df
 correlacion_plas_vs_año
 correlacion_plas_vs_zona
 correlacion_plas_vs_sexo
+modelo_interaccion
