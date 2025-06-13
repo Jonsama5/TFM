@@ -1,0 +1,222 @@
+Sample ID,Country,Location,Year,Month,Latitude,Longitude,Sex
+AB0293-C,Cameroon,Doulougou,2005,-1,"10,425","14,242",F
+AB0294-C,Cameroon,Doulougou,2005,-1,"10,425","14,242",F
+AB0295-C,Cameroon,Doulougou,2005,-1,"10,425","14,242",F
+AB0297-C,Cameroon,Moussourtouk,2005,-1,"10,342","14,236",F
+AN0007-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0008-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0009-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0010-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0011-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0012-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0013-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0014-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0015-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0016-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0017-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0018-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0019-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0020-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0021-C,Cameroon,Mayos,2009,9,"4,341","13,558",Undefined
+AN0022-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0023-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0024-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0025-Cx,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0026-Cx,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0027-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0028-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0029-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0030-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0031-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0032-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0033-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0034-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0035-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0036-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",M
+AN0037-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0038-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0039-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0040-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0041-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0042-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0043-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0044-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0045-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0046-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0047-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0048-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0049-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0050-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0051-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0053-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0054-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0055-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0056-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0057-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0058-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0059-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0060-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0061-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0062-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0063-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0064-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0065-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0066-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0067-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0068-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0069-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",F
+AN0070-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",F
+AN0071-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",F
+AN0072-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0073-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0074-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0075-Cx,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0076-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0077-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0078-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0079-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0080-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0081-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0082-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0083-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0084-C,Cameroon,Zembe Borongo,2009,9,"5,747","14,442",Undefined
+AN0085-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0086-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0087-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0088-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0089-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0090-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0091-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0092-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0093-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0094-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0095-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0096-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0097-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0099-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0100-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0101-Cx,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0102-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0103-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0104-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0105-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",F
+AN0106-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0107-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0108-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0109-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0111-C,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0112-Cx,Cameroon,Gado Badzere,2009,9,"5,747","14,442",Undefined
+AN0122-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0123-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0124-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0125-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0126-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0127-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0128-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0129-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0130-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0131-C,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0132-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0133-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0134-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0135-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0136-Cx,Cameroon,Mayos,2009,9,"4,341","13,558",M
+AN0137-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0138-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0139-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0140-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0141-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0142-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0143-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0144-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0146-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0147-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0148-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0149-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0175-C,Cameroon,Mayos,2009,9,"4,341","13,558",F
+AN0224-Cx,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0225-Cx,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0226-Cx,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0227-Cx,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0228-C,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0229-Cx,Cameroon,Daiguene,2009,9,"4,777","13,844",M
+AN0238-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0239-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0240-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0268-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0269-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0270-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0271-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0272-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0275-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0276-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0277-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0278-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0279-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0280-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0281-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0305-C,Cameroon,Daiguene,2009,9,"4,777","13,844",F
+AN0325-C,Cameroon,Tibati,2013,10,"6,469","12,629",F
+AN0326-C,Cameroon,Tibati,2013,10,"6,469","12,629",F
+AN0332-C,Cameroon,Tibati,2013,10,"6,469","12,629",F
+AN0379-C,Cameroon,Tibati,2013,10,"6,469","12,629",F
+AN0418-C,Cameroon,Makabay (Djarengo),2005,-1,"9,774","13,893",F
+AN0419-C,Cameroon,Palama,2005,-1,"10,462","14,228",F
+AN0421-C,Cameroon,Moulva,2005,-1,"10,3","14,254",F
+AN0423-C,Cameroon,Laf,2005,-1,"10,256","14,217",F
+AN0424-C,Cameroon,Badjawa,2005,-1,"10,211","14,188",F
+AN0425-C,Cameroon,Massila,2005,-1,"10,188","14,143",F
+AN0426-C,Cameroon,Massila,2005,-1,"10,188","14,143",F
+AN0427-C,Cameroon,Massila,2005,-1,"10,188","14,143",F
+AN0433-C,Cameroon,Otibili,2005,-1,"4,332","11,632",F
+AN0434-C,Cameroon,Mbalmayo,2005,-1,"3,516","11,5",F
+AN0435-C,Cameroon,Obala,2005,-1,"4,166","11,535",F
+AN0436-C,Cameroon,Essos,2005,-1,"3,87","11,539",F
+AN0437-C,Cameroon,Ahala,2005,-1,"3,805","11,507",F
+AN0438-C,Cameroon,Ahala,2005,-1,"3,805","11,507",F
+AN0440-C,Cameroon,Ahala,2005,-1,"3,805","11,507",F
+AN0442-C,Cameroon,Ahala,2005,-1,"3,805","11,507",F
+AN0443-C,Cameroon,Bamendi,2005,-1,"5,479","10,457",F
+AN0444-C,Cameroon,Bamendi,2005,-1,"5,479","10,457",F
+AN0445-C,Cameroon,Bamendi,2005,-1,"5,479","10,457",F
+AN0448-C,Cameroon,Otibili,2005,-1,"4,332","11,632",F
+AN0449-C,Cameroon,Otibili,2005,-1,"4,332","11,632",F
+AN0451-C,Cameroon,Otibili,2005,-1,"4,332","11,632",F
+AN0457-C,Cameroon,Lougol,2005,-1,"10,495","14,255",F
+AN0458-C,Cameroon,Lougol,2005,-1,"10,495","14,255",F
+AN0476-C,Cameroon,Mayo Dafan,2005,-1,"9,764","13,905",F
+AN0487-C,Cameroon,Carrefour Poli,2005,-1,"8,534","13,53",F
+AN0495-CW,Cameroon,Mgbandji,2013,10,"6,097","11,141",F
+AN0499-CW,Cameroon,Mfelap,2013,10,"5,726","10,868",F
+AN0500-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0503-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0574-CW,Cameroon,Afan-Essokye,2013,10,"2,367","9,983",F
+AN0577-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0578-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0579-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0580-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0581-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0582-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0585-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0586-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0587-CW,Cameroon,Manda,2013,10,"5,726","10,868",F
+AN0588-CW,Cameroon,Manchoutvi,2013,10,"5,88","11,11",F
+AN0626-CW,Cameroon,Nkolondom,2013,10,"3,972","11,516",F
+AN0643-CW,Cameroon,Manchoutvi,2013,10,"5,88","11,11",F
+VBS02008-4431STDY6672876,Cameroon,Mayo Lebride,2005,-1,"9,513","13,823",F
+VBS02009-4431STDY6672877,Cameroon,Secamde,2005,-1,"9,424","13,56",F
+VBS02010-4431STDY6672878,Cameroon,Lainde Mbana,2005,-1,"9,119","13,506",F
+VBS02012-4431STDY6672880,Cameroon,Lamoudan,2005,-1,"8,981","13,533",F
+VBS02015-4431STDY6672883,Cameroon,Mayo Boki,2005,-1,"8,722","13,54",F
+VBS02017-4431STDY6672885,Cameroon,Mayo Boki,2005,-1,"8,722","13,54",F
+VBS02020-4431STDY6672888,Cameroon,Balda Bouri,2005,-1,"8,513","13,603",F
+VBS02024-4431STDY6672892,Cameroon,Djaba,2005,-1,"8,394","13,714",F
+VBS02025-4431STDY6672893,Cameroon,Banda,2005,-1,"8,199","13,641",F
+VBS02040-4431STDY6672908,Cameroon,Mabarangal'L,2005,-1,"6,915","13,132",F
+VBS02041-4431STDY6672909,Cameroon,Tekel,2005,-1,"6,806","13,174",F
+VBS02042-4431STDY6672910,Cameroon,Beka Goto,2005,-1,"6,751","13,111",F
+VBS02043-4431STDY6672911,Cameroon,Beka Goto,2005,-1,"6,751","13,111",F
+VBS02045-4431STDY6672913,Cameroon,Avebe,2005,-1,"3,369","11,519",F
+VBS02046-4431STDY6672914,Cameroon,Foulassi I,2005,-1,"2,817","10,934",F
+VBS02047-4431STDY6672915,Cameroon,Nlozok,2005,-1,"2,855","10,056",F
+VBS02048-4431STDY6672916,Cameroon,DombÃ©,2005,-1,"2,949","9,927",F
