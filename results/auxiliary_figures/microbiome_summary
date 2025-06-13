@@ -1,0 +1,14 @@
+# A tibble: 11 × 5
+   Metric                        Bacteria     Virus Plasmodium     Global
+   <chr>                            <dbl>     <dbl>      <dbl>      <dbl>
+ 1 Total Reads                 125892.    31432.     18345.    175668.   
+ 2 Number of OTUs                1432       114         15       1561    
+ 3 Mean Reads                     570.      142.        83.0      795.   
+ 4 Median Reads                   206.       95.4        0        347.   
+ 5 Standard Deviation of Reads   1654.      162.       597.      1771.   
+ 6 Minimum Reads                    2.32     20.9        0         30.7  
+ 7 Maximum Reads                21574.     1323.      7652.     21617.   
+ 8 Shannon Diversity                1.76      0.403      0.130      1.79 
+ 9 Simpson Diversity                0.629     0.196      0.631      0.677
+10 Bray-Curtis Diversity            0.810     0.398    NaN          0.712
+11 Jaccard Diversity                0.879     0.531    NaN          0.817
