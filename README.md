@@ -67,8 +67,8 @@ The data analysis pipeline was implemented in R (version 4.4.2) using the follow
 ## Notes
 
 - Protist and fungal reads were not detected in the dataset except for *Plasmodium*, which was manually included in analyses.  
-- The pipeline and analysis scripts are organized to facilitate reproducibility.  
-- The entire workflow, including data preprocessing and statistical scripts, can be found in this repository.
+- The pipeline and analysis scripts are organized to facilitate reproducibility.  (TO BE ADDED)
+- The entire workflow, including data preprocessing and statistical scripts, can be found in this repository. (TO BE ADDED)
 
 ---
 
